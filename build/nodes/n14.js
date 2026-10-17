@@ -1,15 +1,16 @@
 // Node 14: 5-layer contextual validation (Layer 0 + the 4 design layers)
 // Inputs:
-//   $input            -> Node 13 rerank response { data: [{ index, score }] }
+//   $('13. Rerank')        -> rerank response { data: [{ index, score }] }
 //   $('9. Parse Intent')   -> equipment_id, anomaly_type, sensor_type, sensor_value, timestamp
 //   $('12. Merge Results') -> candidates (the documents sent to rerank, same order)
 //   $('9b. Lookup Equipment') -> equipment row from Postgres
 //   /data/*.json -> schedules, baselines
 
+const t_start = Date.now();
 const fs = require('fs');
 const intent = $('9. Parse Intent').first().json;
 const candidates = $('12. Merge Results').first().json.candidates || [];
-const rerank = $input.first().json.data || [];
+const rerank = $('13. Rerank').first().json.data || [];
 
 const { equipment_id, anomaly_type, sensor_type, sensor_value, timestamp, raw_query } = intent;
 
@@ -189,8 +190,23 @@ if (explainingSchedule) {
   recovery_time = `${String(Math.floor(end)).padStart(2, '0')}:${String(Math.round((end % 1) * 60)).padStart(2, '0')}`;
 }
 
+// ----- Process trace (chat runs only): Station 2 evidence and Station 3 context -----
+const t_end = Date.now();
+const t_station1 = Number($('9b. Lookup Equipment').first().json.t_station1) || t_start;
+const trace_steps = [
+  { station: 'Station 2', step: `Find evidence -> ${topChunks.length} chunks`, ms: t_start - t_station1,
+    detail: {
+      search_query: intent.search_query,
+      before_rerank: candidates.map(c => ({ id: c.id, source: c.metadata?.source_doc, dense: c.dense, bm25: c.sparse, hybrid: c.hybrid })),
+      after_rerank: topChunks.map(c => ({ id: c.id, source: c.metadata?.source_doc, score: +(+c.rerank_score).toFixed(3) }))
+    } },
+  { station: 'Station 3', step: `Check context -> confidence ${confidence}`, ms: t_end - t_start,
+    detail: { layer_scores: layerScores, reasons, raw_score: raw, cap_applied: confidence < Math.max(0, Math.min(100, raw)), cap: W.BENIGN_CAP, confidence, threshold: W.THRESHOLD, status } }
+];
+
 return [{
   json: {
+    run_id: intent.run_id || null, t_end, trace_steps,
     equipment_id, anomaly_type, sensor_type, sensor_value, timestamp, raw_query,
     equipment_spec: equipment, recovery_time,
     confidence, raw_score: raw, layerScores, reasons,

@@ -35,6 +35,8 @@
 | Node 15: max_tokens 200 | ALERT answers stop at ~150 tokens; the cap guards against runaway output. |
 | Node 14b + 15b: escalations use a template, no LLM | Node 14 already decides them; saves ~1 s and cannot hallucinate. |
 | Node 15: max_tokens 200 | ALERT answers stop at ~150 tokens; the cap guards against runaway output. |
+| Node 14b + 15b: escalations use a template, no LLM | Node 14 already decides them; saves ~1 s and cannot hallucinate. |
+| Node 15: max_tokens 200 | ALERT answers stop at ~150 tokens; the cap guards against runaway output. |
 | Node 9b: equipment specs from Postgres; equipment.csv no longer chunked into Pinecone | One source of truth for machine data (31 vectors, was 51). Node 12 adds the row as a context chunk. |
 | Node 14b + 15b: escalations use a template, no LLM | Node 14 already decides them; saves ~1 s and cannot hallucinate. |
 | Node 15: max_tokens 200 | ALERT answers stop at ~150 tokens; the cap guards against runaway output. |
@@ -187,6 +189,7 @@ const body = item.body || item;            // Webhook node puts the payload unde
 const query = (body.query || "").trim();
 const timestamp = body.timestamp || null;
 const source = body.source || 'sensor';      // sensor | chat | test | dashboard
+const run_id = body.run_id || null;            // set only for chat runs (process trace)
 
 // Equipment ID
 const equipmentMatch = query.match(/Equipment-(\d{3})/i);
@@ -238,6 +241,7 @@ return [{
     sensor_value,
     timestamp,
     raw_query: query,
+    run_id,
     source,
     search_query,
     started_at: Date.now()                  // For latency measurement in Node 17
@@ -365,16 +369,17 @@ return [{
 ```javascript
 // Node 14: 5-layer contextual validation (Layer 0 + the 4 design layers)
 // Inputs:
-//   $input            -> Node 13 rerank response { data: [{ index, score }] }
+//   $('13. Rerank')        -> rerank response { data: [{ index, score }] }
 //   $('9. Parse Intent')   -> equipment_id, anomaly_type, sensor_type, sensor_value, timestamp
 //   $('12. Merge Results') -> candidates (the documents sent to rerank, same order)
 //   $('9b. Lookup Equipment') -> equipment row from Postgres
 //   /data/*.json -> schedules, baselines
 
+const t_start = Date.now();
 const fs = require('fs');
 const intent = $('9. Parse Intent').first().json;
 const candidates = $('12. Merge Results').first().json.candidates || [];
-const rerank = $input.first().json.data || [];
+const rerank = $('13. Rerank').first().json.data || [];
 
 const { equipment_id, anomaly_type, sensor_type, sensor_value, timestamp, raw_query } = intent;
 
@@ -554,8 +559,23 @@ if (explainingSchedule) {
   recovery_time = `${String(Math.floor(end)).padStart(2, '0')}:${String(Math.round((end % 1) * 60)).padStart(2, '0')}`;
 }
 
+// ----- Process trace (chat runs only): Station 2 evidence and Station 3 context -----
+const t_end = Date.now();
+const t_station1 = Number($('9b. Lookup Equipment').first().json.t_station1) || t_start;
+const trace_steps = [
+  { station: 'Station 2', step: `Find evidence -> ${topChunks.length} chunks`, ms: t_start - t_station1,
+    detail: {
+      search_query: intent.search_query,
+      before_rerank: candidates.map(c => ({ id: c.id, source: c.metadata?.source_doc, dense: c.dense, bm25: c.sparse, hybrid: c.hybrid })),
+      after_rerank: topChunks.map(c => ({ id: c.id, source: c.metadata?.source_doc, score: +(+c.rerank_score).toFixed(3) }))
+    } },
+  { station: 'Station 3', step: `Check context -> confidence ${confidence}`, ms: t_end - t_start,
+    detail: { layer_scores: layerScores, reasons, raw_score: raw, cap_applied: confidence < Math.max(0, Math.min(100, raw)), cap: W.BENIGN_CAP, confidence, threshold: W.THRESHOLD, status } }
+];
+
 return [{
   json: {
+    run_id: intent.run_id || null, t_end, trace_steps,
     equipment_id, anomaly_type, sensor_type, sensor_value, timestamp, raw_query,
     equipment_spec: equipment, recovery_time,
     confidence, raw_score: raw, layerScores, reasons,
@@ -578,7 +598,7 @@ Runs on the ALERT path only.
 ```javascript
 // Node 15: Build the LLM request (status and confidence are decided by Node 14, not the LLM)
 
-const v = $input.first().json;
+const v = $('14. Validate').first().json;
 const context = (v.topChunks || []).map((c, i) => `[${i + 1}] (${c.metadata?.source_doc}) ${c.text}`).join('\n\n');
 
 const task = {
@@ -635,7 +655,7 @@ return [{
 // Escalations are fully decided by Node 14, so a template is faster (~1 s saved) and cannot hallucinate.
 // Output matches the Fireworks response shape so Node 17 handles both paths.
 
-const v = $input.first().json;
+const v = $('14. Validate').first().json;
 let lines;
 
 if (v.status === 'FALSE POSITIVE') {
@@ -695,6 +715,9 @@ return [{
     sources: v.topChunks.map(c => ({ id: c.id, source: c.metadata?.source_doc, rerank_score: +c.rerank_score.toFixed(3) })),
     response: text,
     response_source: llm.source || 'llm',
+    model: llm.source === 'template' ? null : (llm.model || 'accounts/fireworks/models/gpt-oss-120b'),
+    run_id: v.run_id,
+    t14_end: v.t_end,
     latency_sec: +((Date.now() - started) / 1000).toFixed(2),
     timestamp: new Date().toISOString()
   }

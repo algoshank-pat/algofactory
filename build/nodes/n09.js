@@ -7,6 +7,7 @@ const body = item.body || item;            // Webhook node puts the payload unde
 const query = (body.query || "").trim();
 const timestamp = body.timestamp || null;
 const source = body.source || 'sensor';      // sensor | chat | test | dashboard
+const run_id = body.run_id || null;            // set only for chat runs (process trace)
 
 // Equipment ID
 const equipmentMatch = query.match(/Equipment-(\d{3})/i);
@@ -58,6 +59,7 @@ return [{
     sensor_value,
     timestamp,
     raw_query: query,
+    run_id,
     source,
     search_query,
     started_at: Date.now()                  // For latency measurement in Node 17

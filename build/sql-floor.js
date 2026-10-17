@@ -42,5 +42,31 @@ WITH r AS (
   SELECT equipment_id, 'dashboard', 'Status reset from dashboard', 'RESET', NULL, 'Technician reset' FROM r
   RETURNING id
 )
-SELECT (SELECT count(*) FROM r)::int AS reset, $1 AS equipment_id, (SELECT id FROM l) AS alert_id;`
+SELECT (SELECT count(*) FROM r)::int AS reset, $1 AS equipment_id, (SELECT id FROM l) AS alert_id;`,
+  // Chat runs for the Activity log. $1 = limit, $2 = plant ('' = all), $3 = decision ('' = all)
+  runs: `
+SELECT coalesce(json_agg(x ORDER BY x.started_at DESC), '[]') AS runs
+FROM (
+  SELECT r.run_id, r.started_at, r.input, r.status, r.equipment_id, e.name, e.site, r.decision, r.confidence,
+         r.llm_calls, r.tool_calls,
+         coalesce(r.total_ms, round(extract(epoch FROM now() - r.started_at) * 1000)::int) AS total_ms,
+         (r.status = 'running' AND r.started_at < now() - interval '2 minutes') AS stalled
+  FROM runs r LEFT JOIN equipment e USING (equipment_id)
+  WHERE ($2 = '' OR e.site = $2 OR lower(split_part(e.site, ' ', 1)) = lower($2))
+    AND ($3 = '' OR r.decision = upper($3))
+  ORDER BY r.started_at DESC
+  LIMIT least(greatest($1::int, 1), 200)
+) x;`,
+
+  // One run with all of its steps. $1 = run id
+  run: `
+SELECT r.run_id, r.started_at, r.finished_at, r.input, r.status, r.equipment_id, e.name, e.site, r.decision, r.confidence,
+       r.llm_calls, r.tool_calls, r.reply,
+       coalesce(r.total_ms, round(extract(epoch FROM now() - r.started_at) * 1000)::int) AS total_ms,
+       (r.status = 'running' AND r.started_at < now() - interval '2 minutes') AS stalled,
+       coalesce((SELECT json_agg(json_build_object('step_no', t.step_no, 'station', t.station, 'step', t.step, 'detail', t.detail,
+                                                   'ms', t.ms, 'created_at', t.created_at) ORDER BY t.step_no)
+                 FROM run_trace t WHERE t.run_id = r.run_id), '[]') AS steps
+FROM runs r LEFT JOIN equipment e USING (equipment_id)
+WHERE r.run_id = as_uuid($1);`
 };

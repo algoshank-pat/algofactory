@@ -148,7 +148,7 @@ docker exec algoman-pg psql -U algoman -d algoman -c "DELETE FROM alert_log;" \
    | Chatbot prompt | `build/chat-system.txt` |
    | Dashboard | `dashboard/AlgoFactory-dashboard.html` (embedded into the Floor API workflow at build time) |
    | Knowledge base | `data/` (then re-run Ingest, section 1.7) |
-   | Database functions | apply with `docker exec -i algoman-pg psql -U algoman -d algoman < build/sql/sql-chat-tools.sql` |
+   | Database functions | apply with `docker exec -i algoman-pg psql -U algoman -d algoman < build/sql/<file>.sql` (`sql-chat-tools.sql`, `sql-trace.sql`, `sql-chat-run.sql`) |
 
 3. **Rebuild, import and publish** only the workflows you changed (IDs in the table above):
    ```bash

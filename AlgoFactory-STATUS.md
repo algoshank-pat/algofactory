@@ -55,8 +55,8 @@ Worker chat    -> AI Agent calls       -> bge rerank (top 3)      schedule, base
 | AlgoFactory - 1 Ingest | 438f43ce2ff04804 | Run once: chunks the knowledge base into 31 chunks, embeds them, and upserts them to Pinecone. Equipment rows live in Postgres, not Pinecone. |
 | AlgoFactory - 2 Query | 9b3ede12f642464f | Sensor input: Webhook -> Run Pipeline -> Respond |
 | AlgoFactory - 3 Pipeline | 5c7a1f0e2d3b4a69 | Stations 1-4 (Nodes 9-19), shared by sensor alerts and chat. Writes alert_log and equipment_status. |
-| AlgoFactory - 4 Chat | 4a9c3d2e1f0b5c68 | Chat Trigger -> AI Agent (gpt-oss-120b) + memory + tools: lookup_equipment, get_equipment_status, check_alert (calls the pipeline) |
-| AlgoFactory - 5 Floor API | 7e9c3f2a4b5d6e81 | Serves the dashboard and its JSON endpoints: /floor, /floor/equipment, /floor/alerts, /floor/history, /floor/reset |
+| AlgoFactory - 4 Chat | 4a9c3d2e1f0b5c68 | Chat Trigger -> Run Start -> AI Agent (gpt-oss-120b) + memory + traced tools: lookup_equipment, get_equipment_status, check_alert (calls the pipeline) -> Order Trace -> Finish Run -> Reply |
+| AlgoFactory - 5 Floor API | 7e9c3f2a4b5d6e81 | Serves the dashboard and its JSON endpoints: /floor, /floor/equipment, /floor/alerts, /floor/history, /floor/reset, /floor/runs, /floor/run |
 | AlgoFactory - 6 Status Job | 6d8b2e1f3c4a5b70 | Every 15 minutes: explained -> normal after 3 hours; maintenance windows. Never overrides a fault. |
 
 ### Services and models
@@ -122,6 +122,21 @@ Worker chat    -> AI Agent calls       -> bge rerank (top 3)      schedule, base
 | C4 | "Is the compressor on Line 9 ok?" | lookup -> no match -> asks; names no machine |
 
 Median latency: sensor alerts 1.46 s (max 2.56 s); chat 2.23 s (max 3.54 s). Holds and escalations take about 1 s. Act answers take 2-2.5 s because they call the LLM; this is over the original "under 2 s" target.
+
+## Process trace and activity log (chat runs only)
+
+Every chat message (dashboard chat or n8n chat page) is recorded as a run. Sensor alerts and the dashboard's test-alert buttons are **not** traced.
+
+- **What a run shows:** Prompt -> **LLM call 1** (tool chosen, arguments, model's reasoning note, tokens) -> **tool call** (`lookup_equipment` / `get_equipment_status`, with results) -> **LLM call 2** -> `check_alert`, which expands into Station 1 (parse + Postgres lookup), Station 2 (chunks before/after rerank), Station 3 (L0-L4 scores, cap, confidence) and Station 4 (decision, template or LLM) plus Write-back (status old -> new, alert_log id) -> **final LLM call** (reply).
+- **Timing:** tool and station steps are timed exactly. LLM call times are estimates (marked ≈) from the gap between steps, because n8n does not expose per-call timing.
+- **Live progress:** tool and station steps are written to Postgres as they happen. The LLM-call details are slotted in when the agent replies.
+- **Dashboard:**
+  - **Process trace tab:** pick a run, see a timeline of steps, click a step for its detail.
+  - **Activity log tab:** chat runs newest first, filterable by plant and decision; clicking a row opens its trace.
+  - **Activity panel** beside the chat: streams the current message's steps (polls every 500 ms). Show/Hide is remembered per browser.
+- **Storage:** Postgres tables `runs` (one row per chat message) and `run_trace` (one row per step); `alert_log.run_id` links alerts to runs. SQL is in `build/sql/sql-trace.sql`, `sql-chat-run.sql` and `sql-station1-lookup.sql`.
+- **API:** `GET /webhook/floor/runs?limit=&plant=&decision=` and `GET /webhook/floor/run?id=<run_id>`. The detail endpoint uses a query parameter, because n8n registers webhooks with path parameters under a generated ID prefix.
+- **Verified October 16:** C1 shows +50 +40 -40 -15 -5, cap -> 10, HOLD, 3 LLM calls and 2 tool calls; C3 shows lookup -> 11 motors -> asks which. The full regression still passes 10/10 tests (20/20 runs). The chat path takes about 0.3-0.5 s longer because of the extra trace steps.
 
 ## Demo setup and script (5 minutes)
 

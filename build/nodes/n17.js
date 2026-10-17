@@ -26,6 +26,9 @@ return [{
     sources: v.topChunks.map(c => ({ id: c.id, source: c.metadata?.source_doc, rerank_score: +c.rerank_score.toFixed(3) })),
     response: text,
     response_source: llm.source || 'llm',
+    model: llm.source === 'template' ? null : (llm.model || 'accounts/fireworks/models/gpt-oss-120b'),
+    run_id: v.run_id,
+    t14_end: v.t_end,
     latency_sec: +((Date.now() - started) / 1000).toFixed(2),
     timestamp: new Date().toISOString()
   }

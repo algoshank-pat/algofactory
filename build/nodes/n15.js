@@ -1,6 +1,6 @@
 // Node 15: Build the LLM request (status and confidence are decided by Node 14, not the LLM)
 
-const v = $input.first().json;
+const v = $('14. Validate').first().json;
 const context = (v.topChunks || []).map((c, i) => `[${i + 1}] (${c.metadata?.source_doc}) ${c.text}`).join('\n\n');
 
 const task = {

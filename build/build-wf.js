@@ -33,7 +33,7 @@ const ingest = wf('AlgoFactory - 1 Ingest', [
 
 // Stations 1-4 live in one sub-workflow; the sensor webhook and the chatbot both call it
 const PIPELINE_ID = '5c7a1f0e2d3b4a69';
-const PIPELINE_FIELDS = ['query', 'equipment_id', 'timestamp', 'source'];
+const PIPELINE_FIELDS = ['query', 'equipment_id', 'timestamp', 'source', 'run_id'];
 const inputSchema = PIPELINE_FIELDS.map(id => ({ id, displayName: id, required: false, defaultMatch: false, display: true, canBeUsedToMatch: true, type: 'any', removed: false }));
 const inputMapping = value => ({ mappingMode: 'defineBelow', value, matchingColumns: [], schema: inputSchema, attemptToConvertTypes: false, convertFieldsToString: false });
 const pipeline = wf('AlgoFactory - 3 Pipeline', [
@@ -42,7 +42,8 @@ const pipeline = wf('AlgoFactory - 3 Pipeline', [
   // Station 1 (sensor path): deterministic lookup by ID. Always outputs an item, empty when no ID or no row.
   { id: uuid(), name: '9b. Lookup Equipment', type: 'n8n-nodes-base.postgres', typeVersion: 2.5, position: [330, 160], alwaysOutputData: true,
     credentials: { postgres: { id: 'AlgoManPgCred0001', name: 'AlgoMan Postgres' } },
-    parameters: { operation: 'executeQuery', query: 'SELECT * FROM equipment WHERE equipment_id = $1;', options: { queryReplacement: "={{ $json.equipment_id || 'NO-ID' }}" } } },
+    parameters: { operation: 'executeQuery', query: fs.readFileSync(`${__dirname}/sql/sql-station1-lookup.sql`, 'utf8'),
+      options: { queryReplacement: "={{ [$json.equipment_id || 'NO-ID', $json.run_id || '', JSON.stringify({ equipment_id: $json.equipment_id, anomaly_type: $json.anomaly_type, sensor_type: $json.sensor_type, sensor_value: $json.sensor_value, search_query: $json.search_query, raw_query: $json.raw_query, started_at: $json.started_at, run_id: $json.run_id })] }}" } } },
   http('10a. Embed Query', 'https://api.fireworks.ai/inference/v1/embeddings',
     "={{ JSON.stringify({ model: 'accounts/fireworks/models/qwen3-embedding-8b', input: $('9. Parse Intent').first().json.search_query, dimensions: 1024 }) }}", FW, 440, 0),
   http('10b. Pinecone Query', `https://${HOST}/query`, '={{ JSON.stringify({ vector: $json.data[0].embedding, topK: 20, includeMetadata: true }) }}', PC, 660, 0),
@@ -50,9 +51,12 @@ const pipeline = wf('AlgoFactory - 3 Pipeline', [
   codeNode('12. Merge Results', 'n12.js', 1100, 0),
   http('13. Rerank', 'https://api.pinecone.io/rerank', '={{ JSON.stringify($json.rerank_body) }}', PC, 1320, 0),
   codeNode('14. Validate', 'n14.js', 1540, 0),
+  // Process trace (chat runs only): Station 2 evidence + Station 3 context. No-op for sensor alerts (no run id).
+  { id: uuid(), name: '14t. Trace Evidence & Context', type: 'n8n-nodes-base.postgres', typeVersion: 2.5, position: [1650, 160], alwaysOutputData: true, credentials: { postgres: { id: 'AlgoManPgCred0001', name: 'AlgoMan Postgres' } },
+    parameters: { operation: 'executeQuery', query: 'SELECT trace_add_steps(as_uuid($1), $2::jsonb) AS traced;', options: { queryReplacement: "={{ [$json.run_id || '', JSON.stringify($json.trace_steps || [])] }}" } } },
   { id: uuid(), name: '14b. Route', type: 'n8n-nodes-base.if', typeVersion: 2.2, position: [1760, 0], parameters: {
     conditions: { options: { caseSensitive: true, leftValue: '', typeValidation: 'strict', version: 2 },
-      conditions: [{ id: uuid(), leftValue: '={{ $json.decision }}', rightValue: 'generate', operator: { type: 'string', operation: 'equals' } }], combinator: 'and' },
+      conditions: [{ id: uuid(), leftValue: "={{ $('14. Validate').first().json.decision }}", rightValue: 'generate', operator: { type: 'string', operation: 'equals' } }], combinator: 'and' },
     options: {} } },
   codeNode('15. Build Prompt', 'n15.js', 1980, -120),
   http('16. Fireworks LLM', 'https://api.fireworks.ai/inference/v1/chat/completions', '={{ JSON.stringify($json.llm_body) }}', FW, 2200, -120),
@@ -66,7 +70,7 @@ const pipeline = wf('AlgoFactory - 3 Pipeline', [
 ]);
 // Branch: 14b true -> LLM path, false -> template path; both end in 17 (the sub-workflow's output)
 const to = n => [{ node: n, type: 'main', index: 0 }];
-pipeline.connections = { ...chain(pipeline.nodes.slice(0, 10).map(n => n.name)),
+pipeline.connections = { ...chain(pipeline.nodes.slice(0, 11).map(n => n.name)),
   '14b. Route': { main: [to('15. Build Prompt'), to('15b. Template Response')] },
   '15. Build Prompt': { main: [to('16. Fireworks LLM')] },
   '16. Fireworks LLM': { main: [to('17. Format Response')] },
@@ -76,7 +80,7 @@ pipeline.connections = { ...chain(pipeline.nodes.slice(0, 10).map(n => n.name)),
 
 const runPipeline = (name, x, y) => ({ id: uuid(), name, type: 'n8n-nodes-base.executeWorkflow', typeVersion: 1.2, position: [x, y],
   parameters: { source: 'database', workflowId: { __rl: true, value: PIPELINE_ID, mode: 'id' },
-    workflowInputs: inputMapping({ query: '={{ $json.body.query }}', equipment_id: '={{ $json.body.equipment_id }}', timestamp: '={{ $json.body.timestamp }}', source: "={{ $json.body.source || 'sensor' }}" }),
+    workflowInputs: inputMapping({ query: '={{ $json.body.query }}', equipment_id: '={{ $json.body.equipment_id }}', timestamp: '={{ $json.body.timestamp }}', run_id: '={{ $json.body.run_id }}', source: "={{ $json.body.source || 'sensor' }}" }),
     options: { waitForSubWorkflow: true } } });
 
 const query = wf('AlgoFactory - 2 Query', [
@@ -103,28 +107,43 @@ const OPENAI_CRED = { openAiApi: { id: process.env.OPENAI_CRED_ID || 'SET_ME', n
 const PG = { postgres: { id: 'AlgoManPgCred0001', name: 'AlgoMan Postgres' } };
 const pgTool = (name, description, query, arg, argDesc, x) => ({ id: uuid(), name, type: 'n8n-nodes-base.postgresTool', typeVersion: 2.5, position: [x, 260], credentials: PG,
   parameters: { descriptionType: 'manual', toolDescription: description, operation: 'executeQuery', query,
-    options: { queryReplacement: `={{ $fromAI('${arg}', '${argDesc}', 'string') }}` } } });
+    options: { queryReplacement: `={{ [$('Prepare Prompt').first().json.run_id, $fromAI('${arg}', '${argDesc}', 'string')] }}` } } });
 const chat = wf('AlgoFactory - 4 Chat', [
   { id: uuid(), name: 'Worker Chat', type: '@n8n/n8n-nodes-langchain.chatTrigger', typeVersion: 1.1, position: [0, 0], webhookId: 'a1f0c4e2-7b3d-4e5f-9a6b-1c2d3e4f5a6b',
     parameters: { public: true, mode: 'hostedChat', initialMessages: 'Hi! Tell me what you see on a machine, or ask: How are my machines doing?',
       options: { title: 'AlgoFactory', subtitle: 'Floor assistant', responseMode: 'lastNode' } } },
-  { id: uuid(), name: 'AI Agent', type: '@n8n/n8n-nodes-langchain.agent', typeVersion: 2.2, position: [300, 0],
+  { id: uuid(), name: 'Run Start', type: 'n8n-nodes-base.postgres', typeVersion: 2.5, position: [180, 0], credentials: PG,
+    parameters: { operation: 'executeQuery', query: 'SELECT run_start($1, $2) AS run_id;', options: { queryReplacement: "={{ [$json.runId || ($json.metadata && $json.metadata.runId) || '', $json.chatInput] }}" } } },
+  codeNode('Prepare Prompt', 'chat_prepare.js', 360, 0),
+  { id: uuid(), name: 'AI Agent', type: '@n8n/n8n-nodes-langchain.agent', typeVersion: 2.2, position: [560, 0],
     parameters: { promptType: 'auto', options: { systemMessage: fs.readFileSync(`${__dirname}/chat-system.txt`, 'utf8'), returnIntermediateSteps: true, maxIterations: 6 } } },
   { id: uuid(), name: 'Fireworks gpt-oss-120b', type: '@n8n/n8n-nodes-langchain.lmChatOpenAi', typeVersion: 1.2, position: [0, 260], credentials: OPENAI_CRED,
     parameters: { model: { __rl: true, mode: 'id', value: 'accounts/fireworks/models/gpt-oss-120b' }, options: { temperature: 0 } } },
   { id: uuid(), name: 'Chat Memory', type: '@n8n/n8n-nodes-langchain.memoryBufferWindow', typeVersion: 1.3, position: [160, 260], parameters: { contextWindowLength: 10 } },
   pgTool('lookup_equipment', 'Find machines by name or ID. Input: the machine words exactly as the worker wrote them. Returns 0, 1 or several rows with equipment_id, name, type, site, line, status.',
-    'SELECT * FROM lookup_equipment($1);', 'name_or_id', 'Machine name or ID as the worker wrote it, e.g. Pump 2, Equipment-001, motor', 320),
+    'SELECT * FROM lookup_equipment_traced($1, $2);', 'name_or_id', 'Machine name or ID as the worker wrote it, e.g. Pump 2, Equipment-001, motor', 320),
   pgTool('get_equipment_status', 'Status summary with exact counts. Input: all, a site (Austin, Columbus, Fremont, Denver, Minneapolis, Miami, Seattle), a state, region, line, or a machine. Returns total, by_status counts, and needs_attention (every machine not normal, with reason).',
-    'SELECT * FROM get_status_summary($1);', 'scope', 'all, a site, state, region, line, or a machine name or ID', 480),
+    'SELECT * FROM get_status_summary_traced($1, $2);', 'scope', 'all, a site, state, region, line, or a machine name or ID', 480),
   { id: uuid(), name: 'check_alert', type: '@n8n/n8n-nodes-langchain.toolWorkflow', typeVersion: 2.2, position: [640, 260],
     parameters: { description: 'Run the AlgoFactory checks (evidence, sensors, schedule, baseline, history) for one identified machine. Call only after lookup_equipment returned exactly one row. Returns action (ACT/HOLD/ESCALATE), confidence_score, explanation and response.',
       workflowId: { __rl: true, value: PIPELINE_ID, mode: 'id' },
-      workflowInputs: inputMapping({ query: "={{ $fromAI('query', 'The worker message, verbatim', 'string') }}", equipment_id: "={{ $fromAI('equipment_id', 'equipment_id from lookup_equipment, e.g. Equipment-008', 'string') }}", timestamp: '', source: 'chat' }) } },
+      workflowInputs: inputMapping({ query: "={{ $fromAI('query', 'The worker message, verbatim', 'string') }}", equipment_id: "={{ $fromAI('equipment_id', 'equipment_id from lookup_equipment, e.g. Equipment-008', 'string') }}", timestamp: '', source: 'chat', run_id: "={{ $('Prepare Prompt').first().json.run_id }}" }) } },
+  { id: uuid(), name: 'Read Live Steps', type: 'n8n-nodes-base.postgres', typeVersion: 2.5, position: [800, 0], credentials: PG,
+    parameters: { operation: 'executeQuery', query: 'SELECT * FROM run_steps($1);', options: { queryReplacement: "={{ [$('Prepare Prompt').first().json.run_id] }}" } } },
+  codeNode('Order Trace', 'chat_order.js', 1000, 0),
+  { id: uuid(), name: 'Finish Run', type: 'n8n-nodes-base.postgres', typeVersion: 2.5, position: [1200, 0], credentials: PG,
+    parameters: { operation: 'executeQuery', query: 'SELECT run_finish($1, $2::jsonb, $3::jsonb) AS steps;', options: { queryReplacement: '={{ [$json.run_id, JSON.stringify($json.steps), JSON.stringify($json.summary)] }}' } } },
+  codeNode('Chat Reply', 'chat_reply.js', 1400, 0),
 ]);
 const ai = type => ({ [type]: [[{ node: 'AI Agent', type, index: 0 }]] });
 chat.connections = {
-  'Worker Chat': { main: [[{ node: 'AI Agent', type: 'main', index: 0 }]] },
+  'Worker Chat': { main: [[{ node: 'Run Start', type: 'main', index: 0 }]] },
+  'Run Start': { main: [[{ node: 'Prepare Prompt', type: 'main', index: 0 }]] },
+  'Prepare Prompt': { main: [[{ node: 'AI Agent', type: 'main', index: 0 }]] },
+  'AI Agent': { main: [[{ node: 'Read Live Steps', type: 'main', index: 0 }]] },
+  'Read Live Steps': { main: [[{ node: 'Order Trace', type: 'main', index: 0 }]] },
+  'Order Trace': { main: [[{ node: 'Finish Run', type: 'main', index: 0 }]] },
+  'Finish Run': { main: [[{ node: 'Chat Reply', type: 'main', index: 0 }]] },
   'Fireworks gpt-oss-120b': ai('ai_languageModel'),
   'Chat Memory': ai('ai_memory'),
   'lookup_equipment': ai('ai_tool'),
@@ -160,6 +179,9 @@ endpoint('Alerts', 'GET', 'floor/alerts', 360, FLOOR_SQL.alerts, "={{ [$json.que
 endpoint('History', 'GET', 'floor/history', 540, FLOOR_SQL.history,
   "={{ [$json.query.equipment_id || 'NO-ID', String(Math.min(168, Math.max(1, Number($json.query.hours) || 24)))] }}");
 endpoint('Reset', 'POST', 'floor/reset', 720, FLOOR_SQL.reset, "={{ [$json.body.equipment_id || 'NO-ID'] }}");
+endpoint('Runs', 'GET', 'floor/runs', 900, FLOOR_SQL.runs,
+  "={{ [String(Number($json.query.limit) || 50), $json.query.plant || '', $json.query.decision || ''] }}");
+endpoint('Run', 'GET', 'floor/run', 1080, FLOOR_SQL.run, "={{ [$json.query.id || ''] }}");
 const floor = wf('AlgoFactory - 5 Floor API', floorNodes);
 floor.connections = floorConn;
 fs.writeFileSync(`${__dirname}/out/wf-floor.json`, JSON.stringify(floor, null, 2));

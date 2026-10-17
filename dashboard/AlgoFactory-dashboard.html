@@ -100,6 +100,52 @@
   .chat-input button { background: var(--accent); color: #1a1405; border: 0; border-radius: 8px; padding: 0 14px; font-weight: 800; }
   .chat-input button:disabled { opacity: .6; cursor: wait; }
   .map-panel { margin-bottom: 0; }
+  /* Tabs */
+  .tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line); margin: 0 0 16px; }
+  .tab { background: none; border: 0; border-bottom: 2px solid transparent; color: var(--muted); padding: 8px 14px; font-weight: 600; margin-bottom: -1px; }
+  .tab.on { color: var(--text); border-bottom-color: var(--accent); }
+  .tab:hover { color: var(--text); }
+  /* Chat + activity row (under every tab) */
+  .chat-row { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 18px; margin-top: 18px; align-items: start; }
+  .chat-row.solo { grid-template-columns: 1fr; }
+  .chat-col { position: relative; }
+  .chat-toggle { position: absolute; right: 14px; top: 10px; z-index: 1; }
+  .chat-toggle .btn { padding: 4px 10px; font-size: 12px; }
+  .act-list { height: 400px; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; }
+  .act-row { display: grid; grid-template-columns: 52px minmax(0, 1fr) auto; gap: 8px; align-items: start; font-size: 13px; padding: 6px 0; border-bottom: 1px solid var(--line); }
+  .act-text { word-break: break-word; }
+  .act-ms { color: var(--muted); font-size: 12px; white-space: nowrap; }
+  .stag { display: inline-block; text-align: center; font: 700 10px 'JetBrains Mono', monospace; letter-spacing: .04em; color: var(--c); border: 1px solid var(--c); border-radius: 5px; padding: 2px 4px; min-width: 40px; }
+  /* Process trace */
+  .trace-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; }
+  .sel { background: var(--bg); color: var(--text); border: 1px solid var(--line); border-radius: 8px; padding: 7px 10px; font: inherit; max-width: 100%; }
+  .filters { display: flex; flex-wrap: wrap; gap: 8px; }
+  .timeline { display: flex; gap: 3px; margin: 6px 0 14px; overflow-x: auto; padding-bottom: 4px; }
+  .seg { flex-basis: 0; min-width: 78px; background: var(--panel-2); border: 1px solid var(--line); border-top: 3px solid var(--c); border-radius: 8px; padding: 8px; text-align: left; color: var(--text); display: flex; flex-direction: column; gap: 4px; }
+  .seg.on { border-color: var(--c); background: #20262f; }
+  .seg-l { font-size: 12px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .seg-ms { font-size: 11px; color: var(--muted); }
+  .step-detail { background: var(--panel-2); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; }
+  .sd-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 8px; }
+  .step-detail .kv { grid-template-columns: 130px 1fr; }
+  .pre { white-space: pre-wrap; background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; font: 12px/1.5 'JetBrains Mono', monospace; margin: 4px 0 10px; }
+  .quote { font-size: 15px; padding: 6px 0; }
+  table.mini { width: 100%; border-collapse: collapse; font-size: 12px; margin: 4px 0 12px; }
+  table.mini th, table.mini td { text-align: left; padding: 4px 6px; border-bottom: 1px solid var(--line); }
+  table.mini th { color: var(--muted); font-weight: 600; }
+  .layer { display: grid; grid-template-columns: 110px 160px 44px minmax(0, 1fr); gap: 10px; align-items: center; padding: 5px 0; font-size: 13px; border-bottom: 1px solid var(--line); }
+  .lbar { height: 8px; background: var(--bg); border-radius: 4px; overflow: hidden; }
+  .lbar span { display: block; height: 100%; }
+  .lval { text-align: right; font-weight: 700; }
+  .lwhy { color: var(--muted); font-size: 12px; }
+  /* Activity log */
+  .table-wrap { overflow-x: auto; margin-top: 10px; }
+  table.log { width: 100%; border-collapse: collapse; font-size: 13px; }
+  table.log th { text-align: left; color: var(--muted); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: .06em; padding: 8px; border-bottom: 1px solid var(--line); }
+  table.log td { padding: 9px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  table.log tbody tr { cursor: pointer; }
+  table.log tbody tr:hover { background: var(--panel-2); }
+  @media (max-width: 1100px) { .chat-row { grid-template-columns: 1fr; } .layer { grid-template-columns: 90px 1fr 40px; } .lwhy { grid-column: 1 / -1; } }
   .map-wrap { position: relative; }
   .map-wrap svg { width: 100%; height: auto; display: block; }
   .state { fill: #1f2530; stroke: #313847; stroke-width: 0.8; }
@@ -277,7 +323,199 @@ function FormattedText({ text }) {
   })}`;
 }
 
-function Chat({ onActivity }) {
+// ---------- Process trace (chat runs only) ----------
+const newRunId = () => (crypto.randomUUID ? crypto.randomUUID()
+  : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => { const r = Math.random() * 16 | 0; return (c === 'x' ? r : (r & 3 | 8)).toString(16); }));
+const STATION_COLOR = { 'Prompt': '#8b93a3', 'LLM': '#f472b6', 'Tool': '#f2b134', 'Station 1': '#22d3ee', 'Station 2': '#22d3ee',
+                        'Station 3': '#22d3ee', 'Station 4': '#22d3ee', 'Write-back': '#3ecf8e' };
+const RUN_DECISIONS = ['ACT', 'HOLD', 'ESCALATE', 'ASKED', 'STATUS', 'ANSWERED'];
+const RUN_DECISION_COLOR = { ...DECISION_COLOR, ASKED: 'var(--muted)', STATUS: 'var(--normal)', ANSWERED: 'var(--muted)' };
+const fmtMs = ms => ms == null ? '' : ms >= 1000 ? `${(ms / 1000).toFixed(1)} s` : `${ms} ms`;
+const lsGet = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch { return d; } };
+const lsSet = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch { /* storage unavailable */ } };
+
+// Polls /floor/run?id= every 500 ms until the run is finished (or stalled)
+function useRun(runId) {
+  const [run, setRun] = useState(null);
+  useEffect(() => {
+    if (!runId) { setRun(null); return; }
+    let stop = false, timer;
+    const tick = async () => {
+      try {
+        const r = await getJson(`/floor/run?id=${encodeURIComponent(runId)}`);
+        if (stop) return;
+        if (r && r.run_id) setRun(r);
+        if (r && (r.status === 'done' || r.status === 'error' || r.stalled)) return;
+      } catch { /* keep polling */ }
+      if (!stop) timer = setTimeout(tick, 500);
+    };
+    setRun(null); tick();
+    return () => { stop = true; clearTimeout(timer); };
+  }, [runId]);
+  return run;
+}
+
+function StationTag({ s }) {
+  const label = s.station === 'LLM' ? 'LLM' : s.station === 'Tool' ? 'TOOL' : s.station.replace('Station ', 'S');
+  return html`<span class="stag" style=${{ '--c': STATION_COLOR[s.station] || 'var(--muted)' }}>${label}</span>`;
+}
+
+function ActivityPanel({ runId, onViewTrace }) {
+  const run = useRun(runId);
+  const steps = run?.steps || [];
+  const listRef = React.useRef(null);
+  useEffect(() => { if (listRef.current) listRef.current.scrollTop = listRef.current.scrollHeight; }, [steps.length]);
+  return html`
+    <div class="panel">
+      <h2>Activity ${run ? html`<span class="sub">· ${run.status === 'done' ? `done in ${fmtMs(run.total_ms)}` : run.stalled ? 'stalled' : 'working…'}</span>` : ''}</h2>
+      <div class="act-list" ref=${listRef}>
+        ${!runId && html`<div class="empty">Send a message to see each LLM call and tool call as the agent works.</div>`}
+        ${runId && steps.length === 0 && html`<div class="empty">Waiting for the agent…</div>`}
+        ${steps.map(s => html`
+          <div class="act-row" key=${s.step_no}>
+            <${StationTag} s=${s} />
+            <div class="act-text">${s.step}</div>
+            <div class="act-ms mono">${s.detail && s.detail.ms_estimated ? '≈' : ''}${fmtMs(s.ms)}</div>
+          </div>`)}
+        ${run && run.status !== 'done' && !run.stalled && html`<div class="typing">…</div>`}
+      </div>
+      ${run && run.status === 'done' && html`<button class="btn" style=${{ marginTop: '8px' }} onClick=${() => onViewTrace(run.run_id)}>Open in Process trace →</button>`}
+    </div>`;
+}
+
+function StepDetail({ s }) {
+  const d = s.detail || {};
+  const tbl = (rows, cols) => html`<table class="mini"><thead><tr>${cols.map(c => html`<th key=${c}>${c}</th>`)}</tr></thead>
+    <tbody>${rows.map((r, i) => html`<tr key=${i}>${cols.map(c => html`<td key=${c} class="mono">${r[c] ?? ''}</td>`)}</tr>`)}</tbody></table>`;
+  let body;
+  if (s.station === 'Prompt') body = html`<div class="quote">${d.text}</div>`;
+  else if (s.station === 'LLM') body = html`
+    <div class="kv"><div>Model</div><div class="mono">${(d.model || '').replace('accounts/fireworks/models/', '')}</div>
+      ${d.chose && html`<div>Decided</div><div class="mono">${d.chose.map(t => `${t.tool}(${Object.values(t.args || {}).map(v => JSON.stringify(v)).join(', ')})`).join(' + ')}</div>`}
+      ${d.tokens && html`<div>Tokens</div><div class="mono">${d.tokens.promptTokens} in · ${d.tokens.completionTokens} out</div>`}
+      <div>Time</div><div class="mono">≈ ${fmtMs(s.ms)} (estimated from the gap between steps)</div></div>
+    ${d.reasoning && html`<div class="sub">Model's reasoning note</div><pre class="pre">${d.reasoning}</pre>`}
+    ${d.reply && html`<div class="sub">Reply sent to the worker</div><pre class="pre">${d.reply}</pre>`}`;
+  else if (s.station === 'Tool') body = html`
+    <div class="kv"><div>Tool</div><div class="mono">${d.tool}</div><div>Arguments</div><div class="mono">${JSON.stringify(d.args)}</div>
+      <div>Result</div><div>${d.matches != null ? `${d.matches} match${d.matches === 1 ? '' : 'es'}` : `${d.total} machines`}</div></div>
+    ${d.found && d.found.length > 0 && tbl(d.found, ['name', 'equipment_id', 'site', 'match'])}
+    ${d.by_status && html`<pre class="pre">${JSON.stringify(d.by_status)}</pre>`}`;
+  else if (s.station === 'Station 1') body = html`
+    <div class="kv"><div>Tool</div><div class="mono">check_alert(${JSON.stringify(d.args?.query)}, ${JSON.stringify(d.args?.equipment_id)})</div>
+      <div>Parsed</div><div class="mono">${Object.entries(d.parsed || {}).map(([k, v]) => `${k}=${v}`).join(' · ')}</div>
+      <div>Postgres</div><div class="mono">${d.db_lookup ? `${d.db_lookup.name} (${d.db_lookup.equipment_id}) · ${d.db_lookup.site}, ${d.db_lookup.line} · max ${d.db_lookup.max_temp_c}°C / ${d.db_lookup.max_vibration_mm_s} mm/s` : 'no machine'}</div></div>`;
+  else if (s.station === 'Station 2') body = html`
+    <div class="kv"><div>Search query</div><div class="mono">${d.search_query}</div></div>
+    <div class="sub">After rerank (top ${(d.after_rerank || []).length}, bge-reranker-v2-m3)</div>${tbl(d.after_rerank || [], ['id', 'source', 'score'])}
+    <div class="sub">Before rerank (hybrid = 0.7 dense + 0.3 BM25)</div>${tbl(d.before_rerank || [], ['id', 'source', 'dense', 'bm25', 'hybrid'])}`;
+  else if (s.station === 'Station 3') {
+    const L = d.layer_scores || {}, R = d.reasons || {};
+    const names = { layer0: 'L0 Evidence', layer1: 'L1 Sensors', layer2: 'L2 Schedule', layer3: 'L3 Baseline', layer4: 'L4 History' };
+    body = html`
+      ${Object.keys(names).map(k => html`<div class="layer" key=${k}>
+        <div class="lname">${names[k]}</div>
+        <div class="lbar"><span style=${{ width: `${Math.min(100, Math.abs(L[k] || 0) * 2)}%`, background: (L[k] || 0) < 0 ? 'var(--explained)' : 'var(--watch)' }}></span></div>
+        <div class="lval mono">${(L[k] || 0) > 0 ? '+' : ''}${L[k] ?? 0}</div>
+        <div class="lwhy">${R[k] || ''}</div></div>`)}
+      <div class="kv"><div>Raw score</div><div class="mono">${d.raw_score}</div>
+        <div>Cap applied</div><div class="mono">${d.cap_applied ? `yes (scheduled cause caps at ${d.cap})` : 'no'}</div>
+        <div>Confidence</div><div class="mono"><b>${d.confidence}</b> (act at ≥ ${d.threshold})</div></div>`;
+  }
+  else if (s.station === 'Station 4') body = html`
+    <div class="kv"><div>Decision</div><div><b style=${{ color: DECISION_COLOR[d.decision] }}>${d.decision}</b> · ${d.confidence}%</div>
+      <div>Answer by</div><div>${d.answer_by}${d.model ? html` · <span class="mono">${d.model.replace('accounts/fireworks/models/', '')}</span>` : ''}</div>
+      <div>Why</div><div>${d.explanation}</div></div>
+    ${d.response && html`<pre class="pre">${d.response}</pre>`}`;
+  else if (s.station === 'Write-back') body = html`
+    <div class="kv"><div>Machine</div><div class="mono">${d.equipment_id || 'none identified'}</div>
+      <div>Status</div><div>${d.old_status || 'none'} → <b>${d.new_status || '-'}</b></div><div>alert_log id</div><div class="mono">${d.alert_log_id}</div></div>`;
+  else body = html`<pre class="pre">${JSON.stringify(d, null, 2)}</pre>`;
+  return html`<div class="step-detail"><div class="sd-head"><${StationTag} s=${s} /> <b>${s.step}</b> <span class="sub mono">${fmtMs(s.ms)}</span></div>${body}</div>`;
+}
+
+function ProcessTrace({ runId, onPick }) {
+  const [recent, setRecent] = useState([]);
+  const [sel, setSel] = useState(null);
+  const run = useRun(runId);
+  useEffect(() => { getJson('/floor/runs?limit=30').then(o => setRecent(o.runs || [])).catch(() => {}); }, [runId]);
+  useEffect(() => { if (!runId && recent.length) onPick(recent[0].run_id); }, [recent, runId]);
+  const steps = run?.steps || [];
+  useEffect(() => { setSel(null); }, [runId]);
+  const chosen = steps.find(s => s.step_no === sel) || steps.find(s => s.station === 'Station 3') || steps[0];
+  const total = steps.reduce((n, s) => n + (s.ms || 0), 0) || 1;
+  return html`
+    <div class="panel">
+      <div class="trace-head">
+        <h2 style=${{ margin: 0 }}>Process trace</h2>
+        <select class="sel" value=${runId || ''} onChange=${e => onPick(e.target.value)} aria-label="Pick a chat run">
+          ${recent.length === 0 && html`<option value="">No chat runs yet</option>`}
+          ${recent.map(r => html`<option key=${r.run_id} value=${r.run_id}>${time(r.started_at)} · ${r.input.slice(0, 60)} · ${r.decision || r.status}</option>`)}
+        </select>
+      </div>
+      ${run && html`<div class="sub" style=${{ margin: '8px 0 12px' }}>
+        "${run.input}" → <b style=${{ color: RUN_DECISION_COLOR[run.decision] }}>${run.decision || run.status}</b>${run.confidence != null ? ` ${run.confidence}%` : ''}
+        · ${run.name || 'no machine'} · ${run.llm_calls ?? '?'} LLM calls · ${run.tool_calls ?? '?'} tool calls · ${fmtMs(run.total_ms)}</div>`}
+      ${steps.length === 0 && html`<div class="empty">${runId ? 'Loading…' : 'Ask the assistant something to create a trace.'}</div>`}
+      <div class="timeline">
+        ${steps.map(s => html`
+          <button key=${s.step_no} class=${'seg' + (chosen && chosen.step_no === s.step_no ? ' on' : '')}
+                  style=${{ '--c': STATION_COLOR[s.station] || 'var(--muted)', flexGrow: Math.max(s.ms || 0, total * 0.04) }}
+                  onClick=${() => setSel(s.step_no)} title=${s.step}>
+            <span class="seg-l">${s.station === 'Station 1' ? 'S1 check_alert' : s.station === 'Tool' ? (s.detail?.tool || 'Tool') : s.station}</span>
+            <span class="seg-ms mono">${s.detail && s.detail.ms_estimated ? '≈' : ''}${fmtMs(s.ms)}</span>
+          </button>`)}
+      </div>
+      ${chosen && html`<${StepDetail} s=${chosen} />`}
+    </div>`;
+}
+
+function ActivityLog({ sites, onOpenRun }) {
+  const [runs, setRuns] = useState([]);
+  const [plant, setPlant] = useState('');
+  const [decision, setDecision] = useState('');
+  useEffect(() => {
+    let stop = false;
+    const load = () => getJson(`/floor/runs?limit=100&plant=${encodeURIComponent(plant)}&decision=${decision}`).then(o => { if (!stop) setRuns(o.runs || []); }).catch(() => {});
+    load(); const t = setInterval(load, 5000);
+    return () => { stop = true; clearInterval(t); };
+  }, [plant, decision]);
+  return html`
+    <div class="panel">
+      <div class="trace-head">
+        <h2 style=${{ margin: 0 }}>Activity log · chat runs (${runs.length})</h2>
+        <div class="filters">
+          <select class="sel" value=${plant} onChange=${e => setPlant(e.target.value)} aria-label="Filter by plant">
+            <option value="">All plants</option>${sites.filter(s => s !== 'All').map(s => html`<option key=${s} value=${s}>${s}</option>`)}
+          </select>
+          <select class="sel" value=${decision} onChange=${e => setDecision(e.target.value)} aria-label="Filter by decision">
+            <option value="">All decisions</option>${RUN_DECISIONS.map(d => html`<option key=${d} value=${d}>${d}</option>`)}
+          </select>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table class="log">
+          <thead><tr><th>Time</th><th>Prompt</th><th>Machine</th><th>Decision</th><th>Conf.</th><th>LLM calls</th><th>Tools</th><th>Total</th></tr></thead>
+          <tbody>
+            ${runs.length === 0 && html`<tr><td colspan="8" class="empty">No chat runs yet.</td></tr>`}
+            ${runs.map(r => html`
+              <tr key=${r.run_id} onClick=${() => onOpenRun(r.run_id)} title="Open in Process trace">
+                <td class="mono">${time(r.started_at)}</td>
+                <td>${r.input}</td>
+                <td>${r.name ? `${r.name} · ${r.site}` : '-'}</td>
+                <td><b style=${{ color: RUN_DECISION_COLOR[r.decision] }}>${r.decision || (r.stalled ? 'STALLED' : r.status.toUpperCase())}</b></td>
+                <td class="mono">${r.confidence != null ? `${r.confidence}%` : '-'}</td>
+                <td class="mono">${r.llm_calls ?? '-'}</td>
+                <td class="mono">${r.tool_calls ?? '-'}</td>
+                <td class="mono">${fmtMs(r.total_ms)}</td>
+              </tr>`)}
+          </tbody>
+        </table>
+      </div>
+    </div>`;
+}
+
+function Chat({ onActivity, onRunStart, onViewTrace }) {
   const [sessionId] = useState(() => 'dash-' + Math.random().toString(36).slice(2, 10));
   const [msgs, setMsgs] = useState([{ role: 'bot', text: 'Hi! Tell me what you see on a machine, or ask: How are my machines doing?' }]);
   const [input, setInput] = useState('');
@@ -290,12 +528,14 @@ function Chat({ onActivity }) {
     if (!q || busy) return;
     setInput(''); setBusy(true);
     setMsgs(m => [...m, { role: 'user', text: q }]);
+    const runId = newRunId();
+    onRunStart(runId);                        // the Activity panel starts polling this run's trace
     const t0 = performance.now();
     try {
       const o = await getJson(CHAT_URL.replace('/webhook', ''), { method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'sendMessage', sessionId, chatInput: q }) });
+        body: JSON.stringify({ action: 'sendMessage', sessionId, chatInput: q, runId }) });
       const tools = (o.intermediateSteps || []).map(s => `${s.action.tool}(${Object.values(s.action.toolInput || {}).join(', ')})`);
-      setMsgs(m => [...m, { role: 'bot', text: o.output || '(no reply)', tools, sec: ((performance.now() - t0) / 1000).toFixed(1) }]);
+      setMsgs(m => [...m, { role: 'bot', text: o.output || '(no reply)', tools, runId, sec: ((performance.now() - t0) / 1000).toFixed(1) }]);
       if (tools.some(t => t.startsWith('check_alert'))) onActivity();   // a check can change a machine's status
     } catch (e) {
       setMsgs(m => [...m, { role: 'bot', err: true, text: `Could not reach the assistant (${e.message}).` }]);
@@ -311,7 +551,7 @@ function Chat({ onActivity }) {
           <div key=${i} class=${'msg ' + m.role + (m.err ? ' err' : '')}>
             ${m.role === 'bot' ? html`<${FormattedText} text=${m.text} />` : m.text}
             ${m.tools && m.tools.length > 0 && html`<div class="tools">${m.tools.map((t, j) => html`<span class="tool" key=${j}>${t}</span>`)}</div>`}
-            ${m.sec && html`<div class="meta">${m.sec}s · n8n AI Agent</div>`}
+            ${m.sec && html`<div class="meta">${m.sec}s · n8n AI Agent${m.runId ? html` · <a href="#" onClick=${e => { e.preventDefault(); onViewTrace(m.runId); }}>view trace</a>` : ''}</div>`}
           </div>`)}
         ${busy && html`<div class="typing">AlgoFactory is checking…</div>`}
       </div>
@@ -387,6 +627,13 @@ function App() {
   const [open, setOpen] = useState(null);
   const [updated, setUpdated] = useState(null);
   const [err, setErr] = useState('');
+  const [tab, setTab] = useState(() => lsGet('af.tab', 'equipment'));
+  const [traceRun, setTraceRun] = useState(null);      // run shown in the Process trace tab
+  const [liveRun, setLiveRun] = useState(null);        // run of the latest chat message (Activity panel)
+  const [showActivity, setShowActivity] = useState(() => lsGet('af.showActivity', true));
+  const goTab = t => { setTab(t); lsSet('af.tab', t); };
+  const toggleActivity = () => { setShowActivity(v => { lsSet('af.showActivity', !v); return !v; }); };
+  const openTrace = id => { setTraceRun(id); goTab('trace'); };
 
   const refresh = useCallback(async () => {
     try {
@@ -411,6 +658,13 @@ function App() {
         <div class="sub mono">${updated ? `Updated ${time(updated)} · auto every 15 s` : 'Loading…'}</div>
       </header>
       ${err && html`<p class="err">${err}</p>`}
+      <nav class="tabs" role="tablist">
+        ${[['equipment', 'Equipment'], ['trace', 'Process trace'], ['log', 'Activity log']].map(([k, label]) => html`
+          <button key=${k} role="tab" aria-selected=${tab === k} class=${'tab' + (tab === k ? ' on' : '')} onClick=${() => goTab(k)}>${label}</button>`)}
+      </nav>
+      ${tab === 'trace' && html`<${ProcessTrace} runId=${traceRun} onPick=${setTraceRun} />`}
+      ${tab === 'log' && html`<${ActivityLog} sites=${sites} onOpenRun=${openTrace} />`}
+      ${tab === 'equipment' && html`<div>
       <div class="tiles">
         ${STATUSES.map(s => html`
           <button key=${s} class=${'tile' + (statusFilter === s ? ' on' : '')} style=${{ '--c': COLOR[s] }} onClick=${() => setStatusFilter(statusFilter === s ? null : s)}>
@@ -436,10 +690,17 @@ function App() {
                 </div>`)}
             </section>`)}
         </div>
-          <${Chat} onActivity=${refresh} />
           <${TestAlert} onDone=${refresh} />
         </div>
       </div>
+      </div>`}
+      <section class=${'chat-row' + (showActivity ? '' : ' solo')}>
+        <div class="chat-col">
+          <div class="chat-toggle"><button class="btn" onClick=${toggleActivity} aria-pressed=${showActivity}>${showActivity ? 'Hide activity' : 'Show activity'}</button></div>
+          <${Chat} onActivity=${refresh} onRunStart=${setLiveRun} onViewTrace=${openTrace} />
+        </div>
+        ${showActivity && html`<${ActivityPanel} runId=${liveRun} onViewTrace=${openTrace} />`}
+      </section>
       ${open && html`<${History} id=${open} onClose=${() => setOpen(null)} onChanged=${refresh} />`}
     </div>`;
 }

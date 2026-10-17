@@ -2,7 +2,7 @@
 // Escalations are fully decided by Node 14, so a template is faster (~1 s saved) and cannot hallucinate.
 // Output matches the Fireworks response shape so Node 17 handles both paths.
 
-const v = $input.first().json;
+const v = $('14. Validate').first().json;
 let lines;
 
 if (v.status === 'FALSE POSITIVE') {
