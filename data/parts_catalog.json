@@ -1,0 +1,170 @@
+{
+  "parts": [
+    {
+      "part_id": "BEARING-6208-2RS",
+      "description": "Ball Bearing 6208-2RS (20mm ID, 47mm OD, 14mm width)",
+      "equipment_types": ["Motor"],
+      "compatible_equipment_ids": ["Equipment-001", "Equipment-002", "Equipment-009", "Equipment-012", "Equipment-016", "Equipment-018"],
+      "supplier_id": "Supplier-A",
+      "cost_usd": 45.00,
+      "lead_time_days": 2,
+      "specification": {
+        "bore_mm": 20,
+        "od_mm": 47,
+        "width_mm": 14,
+        "seal_type": "2RS (rubber seals both sides)",
+        "cage_material": "brass",
+        "lubrication": "grease-packed"
+      },
+      "notes": "Standard motor bearing. Keep 3 units in stock."
+    },
+    {
+      "part_id": "BEARING-6309-2RS",
+      "description": "Ball Bearing 6309-2RS (45mm ID, 100mm OD, 25mm width)",
+      "equipment_types": ["Motor", "Fan"],
+      "compatible_equipment_ids": ["Equipment-006", "Equipment-011", "Equipment-015", "Equipment-020"],
+      "supplier_id": "Supplier-A",
+      "cost_usd": 60.00,
+      "lead_time_days": 2,
+      "specification": {
+        "bore_mm": 45,
+        "od_mm": 100,
+        "width_mm": 25,
+        "seal_type": "2RS",
+        "cage_material": "brass",
+        "lubrication": "grease-packed"
+      },
+      "notes": "Larger motor/fan bearing. Keep 2 units in stock."
+    },
+    {
+      "part_id": "SEAL-SA42",
+      "description": "Pump Seal Assembly SA-42 (for standard hydraulic pumps)",
+      "equipment_types": ["Pump"],
+      "compatible_equipment_ids": ["Equipment-004", "Equipment-008", "Equipment-013", "Equipment-017"],
+      "supplier_id": "Supplier-C",
+      "cost_usd": 180.00,
+      "lead_time_days": 5,
+      "specification": {
+        "bore_diameter_mm": 38,
+        "cartridge_length_mm": 45,
+        "seal_material": "Nitrile + Polyurethane",
+        "spring_material": "Stainless Steel 316",
+        "max_pressure_bar": 210
+      },
+      "notes": "Critical component; 5-day lead time is typical. Recommend pre-staging when thermal spike detected."
+    },
+    {
+      "part_id": "RING-PR88",
+      "description": "Piston Ring Kit PR-88 (for reciprocating compressors)",
+      "equipment_types": ["Compressor"],
+      "compatible_equipment_ids": ["Equipment-005", "Equipment-010", "Equipment-014", "Equipment-019"],
+      "supplier_id": "Supplier-B",
+      "cost_usd": 320.00,
+      "lead_time_days": 6,
+      "specification": {
+        "ring_count": 3,
+        "bore_diameter_mm": 82,
+        "ring_material": "Cast Iron (compressor grade)",
+        "piston_pin_diameter_mm": 22,
+        "clearance_inch": 0.001
+      },
+      "notes": "Long lead time (6-7 days). Requires internal inspection; not a quick field replacement."
+    },
+    {
+      "part_id": "OIL-ISO32",
+      "description": "Turbine Oil ISO 32 (for electric motor cooling and bearing lubrication)",
+      "equipment_types": ["Motor"],
+      "supplier_id": "Supplier-A",
+      "cost_usd": 25.00,
+      "lead_time_days": 1,
+      "specification": {
+        "viscosity_grade": "ISO 32",
+        "viscosity_cSt_40C": 32,
+        "viscosity_cSt_100C": 5.4,
+        "flash_point_c": 145,
+        "pour_point_c": -12
+      },
+      "quantity_per_unit": "1 liter",
+      "notes": "Stock item; usually available next day. Use for motor bearing lubrication and thermal management."
+    },
+    {
+      "part_id": "OIL-ISO46",
+      "description": "Hydraulic Fluid ISO 46 (for pumps and hydraulic systems)",
+      "equipment_types": ["Pump", "Compressor"],
+      "supplier_id": "Supplier-C",
+      "cost_usd": 50.00,
+      "lead_time_days": 2,
+      "specification": {
+        "viscosity_grade": "ISO 46",
+        "viscosity_cSt_40C": 46,
+        "viscosity_cSt_100C": 8.2,
+        "flash_point_c": 220,
+        "pour_point_c": -15
+      },
+      "quantity_per_unit": "5 liters",
+      "notes": "Standard pump fluid; 2-day lead time. Verify compatibility with pump manufacturer before use."
+    },
+    {
+      "part_id": "OIL-COMP46",
+      "description": "Compressor Oil ISO 46 (mineral-based, for piston/screw compressors)",
+      "equipment_types": ["Compressor"],
+      "supplier_id": "Supplier-B",
+      "cost_usd": 65.00,
+      "lead_time_days": 1,
+      "specification": {
+        "viscosity_grade": "ISO 46",
+        "viscosity_cSt_40C": 46,
+        "viscosity_cSt_100C": 8.2,
+        "anti_wear_additives": true,
+        "demulsibility": "excellent"
+      },
+      "quantity_per_unit": "5 liters",
+      "notes": "Mineral oil; do not mix with synthetic. Essential for piston ring lubrication."
+    },
+    {
+      "part_id": "THERM-MP01",
+      "description": "Thermal Paste (motor-grade, for bearing/housing thermal interface)",
+      "equipment_types": ["Motor"],
+      "supplier_id": "Supplier-B",
+      "cost_usd": 12.00,
+      "lead_time_days": 1,
+      "specification": {
+        "thermal_conductivity_w_m_k": 3.2,
+        "viscosity_poise": 1200,
+        "cure_time_hours": 24,
+        "temperature_range_c": "-40 to +200"
+      },
+      "quantity_per_unit": "50 gram tube",
+      "notes": "Used for bearing housing thermal monitoring (IR sensor contact). Stock item."
+    },
+    {
+      "part_id": "STRAINER-PUMP",
+      "description": "Pump Inlet Strainer Element (replacement, for cavitation prevention)",
+      "equipment_types": ["Pump"],
+      "supplier_id": "Supplier-C",
+      "cost_usd": 35.00,
+      "lead_time_days": 1,
+      "specification": {
+        "micron_rating": 150,
+        "flow_capacity_lpm": 100,
+        "material": "Stainless Steel mesh"
+      },
+      "notes": "Consumable; replace annually or when VB-002 (cavitation) symptoms appear."
+    },
+    {
+      "part_id": "CHECK-VALVE-SUCTION",
+      "description": "Suction Line Check Valve (prevents backflow, for pump inlet)",
+      "equipment_types": ["Pump"],
+      "supplier_id": "Supplier-C",
+      "cost_usd": 85.00,
+      "lead_time_days": 2,
+      "specification": {
+        "nominal_bore_mm": 25,
+        "cracking_pressure_bar": 0.3,
+        "seat_material": "NBR sealing ring",
+        "body_material": "Cast Iron"
+      },
+      "notes": "Used when inlet pressure consistently below 0.3 bar. Standard replacement for cavitation fix."
+    }
+  ]
+}

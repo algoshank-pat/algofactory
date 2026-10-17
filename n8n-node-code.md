@@ -43,7 +43,7 @@
 
 ## Prerequisites
 
-- **Container:** n8n container runs with `/data` mounted to `C:Mavenalgomove-rag-week2data` and `NODE_FUNCTION_ALLOW_BUILTIN=fs`.
+- **Container:** n8n container runs with `/data` mounted to `C:\Maven\Projects\Week2\data` (the repo's `data/` folder) and `NODE_FUNCTION_ALLOW_BUILTIN=fs`.
 - **Data files:** `/data` holds the 6 data files (`maintenance_schedule.json` and `environmental_baselines.json` as in the design doc).
 - **Pinecone index:** `algomanfactory`, dimension 1024, metric cosine, serverless.
 - **API keys:** container started with `--env-file Update.env` and `N8N_BLOCK_ENV_ACCESS_IN_NODE=false`. HTTP nodes read `$env.FIREWORKS_API_KEY` and `$env.PINECONE_API_KEY`, so no n8n credentials are used and the exported JSON holds no keys.

@@ -1,0 +1,18 @@
+{
+  "baselines": [
+    {
+      "equipment_id": "Equipment-001",
+      "location": "Floor-1-North",
+      "condition": "post_cleaning",
+      "humidity_baseline": 50,
+      "humidity_max_expected": 75,
+      "humidity_elevated_for_hours": 2
+    },
+    {
+      "equipment_id": "Equipment-005",
+      "condition": "summer_season",
+      "temperature_baseline": 28,
+      "temperature_max_expected": 32
+    }
+  ]
+}

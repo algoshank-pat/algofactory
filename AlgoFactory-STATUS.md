@@ -63,7 +63,7 @@ Worker chat    -> AI Agent calls       -> bge rerank (top 3)      schedule, base
 
 | Piece | Choice | Why |
 |---|---|---|
-| Orchestration | n8n 2.43.7 in Docker (container `n8n`, volume `n8n_data`) | Course track |
+| Orchestration | n8n 2.43.7 in Docker (container `n8n`, volume `n8n_data`, `/data` mounted from `Week2\data`) | Course track |
 | Equipment DB | Postgres 16 (container `algoman-pg`, volume `algoman_pg_data`, network `algoman`) | Station 1 lookup, status, alert log |
 | Vector store | Pinecone index `algomanfactory` (1024-dim, cosine) | Semantic search |
 | Embeddings | Fireworks `qwen3-embedding-8b` (1024) | OpenAI account has no credits; open-weight model |
@@ -214,8 +214,9 @@ On Git Bash, prefix the docker commands with `MSYS_NO_PATHCONV=1`. The first req
 | `n8n-node-code.md` | Every node's code and config, tables, endpoints, chatbot |
 | `n8n-design-FINAL-v2.md` | Original design (Oct 15); superseded where this file differs |
 | `dashboard/AlgoFactory-dashboard.html` | Dashboard source |
+| `data/` | Knowledge-base source files, mounted into n8n as `/data` |
 | `build/` | Rebuild sources and DB dump (above) |
 | `Update.env` | API keys and Postgres password. **Do not share or upload.** |
-| `00_*.md` ... `10_*.md`, `AlgoMove_Advisor.xlsx`, `Competitive_Landscape_2026.md`, `HANDOFF - Start Here.md`, `Week2_Problem_Analysis.md` | Earlier **AlgoMove** relocation-advisor idea; not part of AlgoFactory |
+| `00_*.md` ... `10_*.md`, `AlgoMove_Advisor.xlsx`, `Competitive_Landscape_2026.md`, `HANDOFF - Start Here.md`, `Week2_Problem_Analysis.md` | An earlier Week 2 idea (US–India relocation advisor); not part of AlgoFactory and git-ignored |
 
-Knowledge-base data files are outside this folder, in `C:\Maven\algomove-rag-week2\data`, mounted into n8n as `/data`. They are anomaly_patterns.md, playbooks.txt, parts_catalog.json, maintenance_schedule.json, environmental_baselines.json, equipment.csv and the generated chunks.json.
+Knowledge-base data files are in `data/`, mounted into n8n as `/data`. They are anomaly_patterns.md, playbooks.txt, parts_catalog.json, maintenance_schedule.json, environmental_baselines.json, equipment.csv and the generated chunks.json.

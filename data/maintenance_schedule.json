@@ -1,0 +1,23 @@
+{
+  "schedules": [
+    {
+      "equipment_id": "Equipment-001",
+      "schedule_type": "cleaning",
+      "day_of_week": "Monday",
+      "time": "06:00",
+      "method": "wet-wash",
+      "expected_humidity_elevation": 20,
+      "expected_temp_drop": 5,
+      "duration_hours": 2
+    },
+    {
+      "equipment_id": "Equipment-005",
+      "schedule_type": "maintenance",
+      "day_of_week": "Thursday",
+      "time": "14:00",
+      "method": "bearing_replacement",
+      "expected_vibration_spike": 8,
+      "duration_hours": 2
+    }
+  ]
+}

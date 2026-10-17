@@ -1,17 +1,17 @@
 {
   "project": "AlgoFactory",
   "summary": {
-    "run_at": "2026-10-16T21:18:39.878Z",
+    "run_at": "2026-10-17T00:28:30.134Z",
     "tests_passed": 10,
     "tests_total": 10,
     "runs_passed": 20,
     "runs_total": 20,
     "scenario5_pass": true,
     "latency_sec": {
-      "sensor_p50": 1.46,
-      "sensor_max": 2.56,
-      "chat_p50": 2.23,
-      "chat_max": 3.54
+      "sensor_p50": 1.39,
+      "sensor_max": 2.73,
+      "chat_p50": 2.14,
+      "chat_max": 4.43
     },
     "environment": {
       "plant_clock": "2026-10-19T08:30 (PLANT_CLOCK, Monday after the 06:00-08:00 wet-wash)",
@@ -54,8 +54,8 @@
             "layer3": 0,
             "layer4": 0
           },
-          "reply": "Status: ALERT  \nDiagnosis: Motor Thermal Overload (TH-001) – temperature at max limit, risk of bearing friction or cooling failure  \nAction: Follow MP-TH-001 – reduce load, inspect bearing and cooling system, and if condition persists schedule bearing replacement  \nParts: Bearing kit (6208), ISO 32 turbine oil, thermal paste (lead time 2‑3 days for bearing, 1 day for lubricant)",
-          "latency_sec": 2.44,
+          "reply": "Status: ALERT  \nDiagnosis: Motor Thermal Overload (TH-001) – temperature at equipment max, risk of bearing friction increase  \nAction: Follow MP-TH-001 – acknowledge alert, assess severity, reduce load, monitor temperature, prepare for bearing inspection/replacement  \nParts: Bearing replacement kit (6208) – 2‑3 days; ISO 32 lubricant –",
+          "latency_sec": 2.73,
           "pass": true
         },
         {
@@ -76,8 +76,8 @@
             "layer3": 0,
             "layer4": 0
           },
-          "reply": "Status: ALERT  \nDiagnosis: Motor Thermal Overload (TH-001) – temperature at max limit, risk of bearing friction or cooling failure  \nAction: Follow MP-TH-001 – reduce load, inspect bearing and cooling system, and if condition persists schedule bearing replacement  \nParts: Bearing kit (6208), ISO 32 turbine oil, thermal paste (lead time 2‑3 days for bearing, 1 day for lubricant)",
-          "latency_sec": 2.56,
+          "reply": "Status: ALERT  \nDiagnosis: Motor Thermal Overload (TH-001) – temperature at equipment max, risk of bearing friction increase  \nAction: Follow MP-TH-001 – acknowledge alert, assess severity, reduce load, monitor temperature, prepare for bearing inspection/replacement  \nParts: Bearing replacement kit (6208) – 2‑3 days; ISO 32 lubricant –",
+          "latency_sec": 2.64,
           "pass": true
         }
       ],
@@ -113,8 +113,8 @@
             "layer3": 0,
             "layer4": 0
           },
-          "reply": "Status: ALERT  \nDiagnosis: Motor thermal overload – temperature > max + 5 °C, likely bearing friction or cooling deficiency (TH‑001).  \nAction: Follow MP‑TH‑001 – reduce load, inspect cooling system, then check bearings; if hot/rough, schedule bearing replacement.  \nParts: Bearing kit (6208/6309) – 2‑3 days; ISO 32 lubricant – 1 day; thermal paste – 1 day.",
-          "latency_sec": 2.28,
+          "reply": "Status: ALERT  \nDiagnosis: Motor thermal overload – probable bearing overheating (bearing wear) possibly compounded by cooling deficiency.  \nAction: Follow MP-TH-001 – reduce load, perform emergency shutdown, inspect cooling system, then verify bearing temperature and replace if hot.  \nParts: Bearing replacement kit (6208/6309), ISO 32 turbine oil, thermal paste – lead time 2‑3 days (bearings), 1 day (lubricant).",
+          "latency_sec": 2.4,
           "pass": true
         },
         {
@@ -133,8 +133,8 @@
             "layer3": 0,
             "layer4": 0
           },
-          "reply": "Status: ALERT  \nDiagnosis: Motor thermal overload – temperature > max + 5 °C, likely bearing friction or cooling deficiency (TH‑001).  \nAction: Follow MP‑TH‑001 – reduce load, inspect cooling system, then check bearings; if hot/rough, schedule bearing replacement.  \nParts: Bearing kit (6208/6309) – 2‑3 days; ISO 32 lubricant – 1 day; thermal paste – 1 day.",
-          "latency_sec": 2.23,
+          "reply": "Status: ALERT  \nDiagnosis: Motor thermal overload – probable bearing overheating (bearing wear) possibly compounded by cooling deficiency.  \nAction: Follow MP-TH-001 – reduce load, perform emergency shutdown, inspect cooling system, then verify bearing temperature and replace if hot.  \nParts: Bearing replacement kit (6208/6309), ISO 32 turbine oil, thermal paste – lead time 2‑3 days (bearings), 1 day (lubricant).",
+          "latency_sec": 2.27,
           "pass": true
         }
       ],
@@ -172,8 +172,8 @@
             "layer3": 0,
             "layer4": 0
           },
-          "reply": "Status: ALERT  \nDiagnosis: VB-001 – bearing wear causing vibration spike at max (8 mm/s)  \nAction: Immediate bearing replacement per VB-001 playbook; schedule replacement now and verify alignment after install  \nParts: Replacement bearing Piston‑Ring‑PR‑88 (lead time 2‑3 days), alignment shims, bearing puller tool (on‑site)",
-          "latency_sec": 1.92,
+          "reply": "Status: ALERT  \nDiagnosis: VB-001 – bearing wear causing vibration spike at max limit  \nAction: Immediate bearing replacement per VB-001 playbook; schedule replacement now  \nParts: Replacement bearing Piston‑Ring‑PR‑88 (lead time 2‑3 days), bearing puller tool, alignment shims.",
+          "latency_sec": 2.12,
           "pass": true
         },
         {
@@ -194,8 +194,8 @@
             "layer3": 0,
             "layer4": 0
           },
-          "reply": "Status: ALERT  \nDiagnosis: VB-001 – bearing wear causing vibration spike at max (8 mm/s)  \nAction: Immediate bearing replacement per VB-001 playbook; schedule replacement now and verify alignment after install  \nParts: Replacement bearing Piston‑Ring‑PR‑88 (lead time 2‑3 days), alignment shims, bearing puller tool (on‑site)",
-          "latency_sec": 1.96,
+          "reply": "Status: ALERT  \nDiagnosis: VB-001 – bearing wear causing vibration spike at max limit  \nAction: Immediate bearing replacement per VB-001 playbook; schedule replacement now  \nParts: Replacement bearing Piston‑Ring‑PR‑88 (lead time 2‑3 days), bearing puller tool, alignment shims.",
+          "latency_sec": 2.25,
           "pass": true
         }
       ],
@@ -234,7 +234,7 @@
             "layer4": 0
           },
           "reply": "Status: NEEDS INVESTIGATION\nDiagnosis: 68 below max_temp_c 85. Evidence is not strong enough to confirm a fault (confidence 35%).\nAction: Verify the sensor reading on Equipment-001 and keep monitoring; escalate to a technician if it keeps rising.\nParts: None",
-          "latency_sec": 0.97,
+          "latency_sec": 1.39,
           "pass": true
         },
         {
@@ -256,7 +256,7 @@
             "layer4": 0
           },
           "reply": "Status: NEEDS INVESTIGATION\nDiagnosis: 68 below max_temp_c 85. Evidence is not strong enough to confirm a fault (confidence 35%).\nAction: Verify the sensor reading on Equipment-001 and keep monitoring; escalate to a technician if it keeps rising.\nParts: None",
-          "latency_sec": 1.14,
+          "latency_sec": 1.17,
           "pass": true
         }
       ],
@@ -295,7 +295,7 @@
             "layer4": -5
           },
           "reply": "Status: FALSE POSITIVE\nDiagnosis: humidity 75 on Equipment-001 is explained by context. wet-wash cleaning Monday 06:00 (2h) explains humidity up to 75%. Post-cleaning max expected 75%; reading 75% is normal.\nAction: No action needed. Readings should return to baseline by 10:00.\nParts: None",
-          "latency_sec": 0.94,
+          "latency_sec": 1.25,
           "pass": true
         },
         {
@@ -317,7 +317,7 @@
             "layer4": -5
           },
           "reply": "Status: FALSE POSITIVE\nDiagnosis: humidity 75 on Equipment-001 is explained by context. wet-wash cleaning Monday 06:00 (2h) explains humidity up to 75%. Post-cleaning max expected 75%; reading 75% is normal.\nAction: No action needed. Readings should return to baseline by 10:00.\nParts: None",
-          "latency_sec": 0.93,
+          "latency_sec": 1.15,
           "pass": true
         }
       ],
@@ -355,7 +355,7 @@
             "layer4": 0
           },
           "reply": "Status: NEEDS INVESTIGATION\nDiagnosis: Report is too vague to diagnose: no equipment ID or sensor reading.\nAction: Specify the equipment ID and the sensor reading or symptom observed.\nParts: None",
-          "latency_sec": 0.93,
+          "latency_sec": 1.19,
           "pass": true
         },
         {
@@ -375,7 +375,7 @@
             "layer4": 0
           },
           "reply": "Status: NEEDS INVESTIGATION\nDiagnosis: Report is too vague to diagnose: no equipment ID or sensor reading.\nAction: Specify the equipment ID and the sensor reading or symptom observed.\nParts: None",
-          "latency_sec": 1.46,
+          "latency_sec": 1.12,
           "pass": true
         }
       ],
@@ -412,8 +412,8 @@
           "confidence": 10,
           "decision": "HOLD",
           "pass": true,
-          "reply": "Decision: HOLD (Motor 1)  \nWhy: Humidity 75 % is normal during the scheduled wet‑wash cleaning.  \nConfidence: 10%  \nNext step: No action needed; the reading should return to baseline after the cleaning finishes.",
-          "latency_sec": 3.54
+          "reply": "Decision: HOLD (Motor 1)  \nWhy: Humidity 75% is explained by the scheduled wet‑wash cleaning and is within the expected post‑cleaning maximum.  \nConfidence: 10%  \nNext step: No action needed; monitor the reading and it should return to normal by 10:00.",
+          "latency_sec": 4.43
         },
         {
           "run": 2,
@@ -439,8 +439,8 @@
           "confidence": 10,
           "decision": "HOLD",
           "pass": true,
-          "reply": "Decision: HOLD (Motor 1)  \nWhy: Humidity 75 % is normal during the scheduled wet‑wash cleaning.  \nConfidence: 10%  \nNext step: No action needed; the reading should return to baseline by 10 :00.",
-          "latency_sec": 2.82
+          "reply": "Decision: HOLD (Motor 1)  \nWhy: Humidity 75% is explained by the scheduled wet‑wash cleaning and is within the expected post‑cleaning maximum.  \nConfidence: 10%  \nNext step: No action needed; monitor that humidity returns to normal by the next check.",
+          "latency_sec": 3.07
         }
       ],
       "pass": true
@@ -476,8 +476,8 @@
           "confidence": 28,
           "decision": "ESCALATE",
           "pass": true,
-          "reply": "Decision: ESCALATE (Pump 2)  \nWhy: The report is vague and there’s no sensor data to confirm a fault.  \nConfidence: 28%  \nNext step: Check the acoustic sensor on Pump 2 and monitor; if the noise persists, call a technician.",
-          "latency_sec": 2.97
+          "reply": "Decision: ESCALATE (Pump 2)  \nWhy: Report is vague and no sensor data is available.  \nConfidence: 28%  \nNext step: Check the acoustic sensor on Pump 2 and monitor; if the noise persists, call a technician.",
+          "latency_sec": 2.98
         },
         {
           "run": 2,
@@ -503,8 +503,8 @@
           "confidence": 28,
           "decision": "ESCALATE",
           "pass": true,
-          "reply": "Decision: ESCALATE (Pump 2)  \nWhy: The report is vague and there’s no sensor reading to confirm a fault.  \nConfidence: 28%  \nNext step: Check the acoustic sensor on Pump 2 and monitor; if the noise persists or worsens, call a technician.",
-          "latency_sec": 2.92
+          "reply": "Decision: ESCALATE (Pump 2)  \nWhy: Report is vague with no sensor data, so a fault can’t be confirmed.  \nConfidence: 28%  \nNext step: Check the acoustic sensor on Pump 2 and monitor; if the noise persists, call a technician.",
+          "latency_sec": 3.18
         }
       ],
       "pass": true
@@ -543,8 +543,8 @@
           "confidence": null,
           "decision": "ASKED",
           "pass": true,
-          "reply": "Did you mean one of these motors?\n\n- Motor 1 – Austin Plant, Line 1  \n- Motor 2 – Austin Plant, Line 1  \n- Motor 3 – Columbus Plant, Line 2  \n- Motor 4 – Fremont Plant, Line 4  \n- Motor 5 – Austin Plant, Line 1  \n- Motor 6 – Fremont Plant, Line 4  \n- Motor 7 – Columbus Plant, Line 3  \n- Motor 8 – Fremont Plant, Line 4  \n\nPlease tell me the exact name or ID.",
-          "latency_sec": 1.96
+          "reply": "Did you mean one of these motors?  \n- Motor 1 (Austin Plant, Line 1)  \n- Motor 2 (Austin Plant, Line 1)  \n- Motor 3 (Columbus Plant, Line 2)  \n- Motor 4 (Fremont Plant, Line 4)  \n- Motor 5 (Austin Plant, Line 1)  \n- Motor 6 (Fremont Plant, Line 4)  \n- Motor 7 (Columbus Plant, Line 3)  \n- Motor 8 (Fremont Plant, Line 4)  \n\nPlease specify the exact motor name or ID.",
+          "latency_sec": 2.14
         },
         {
           "run": 2,
@@ -573,8 +573,8 @@
           "confidence": null,
           "decision": "ASKED",
           "pass": true,
-          "reply": "Did you mean one of these motors?\n\n- Motor 1 – Austin Plant, Line 1  \n- Motor 2 – Austin Plant, Line 1  \n- Motor 3 – Columbus Plant, Line 2  \n- Motor 4 – Fremont Plant, Line 4  \n- Motor 5 – Austin Plant, Line 1  \n- Motor 6 – Fremont Plant, Line 4  \n- Motor 7 – Columbus Plant, Line 3  \n- Motor 8 – Fremont Plant, Line 4  \n\nPlease tell me the exact name or ID.",
-          "latency_sec": 2.23
+          "reply": "Did you mean one of these motors?  \n- Motor 1 (Austin Plant, Line 1)  \n- Motor 2 (Austin Plant, Line 1)  \n- Motor 3 (Columbus Plant, Line 2)  \n- Motor 4 (Fremont Plant, Line 4)  \n- Motor 5 (Austin Plant, Line 1)  \n- Motor 6 (Fremont Plant, Line 4)  \n- Motor 7 (Columbus Plant, Line 3)  \n- Motor 8 (Fremont Plant, Line 4)  \n\nPlease specify the exact motor name or ID.",
+          "latency_sec": 1.96
         }
       ],
       "pass": true
@@ -601,8 +601,8 @@
           "confidence": null,
           "decision": "ASKED",
           "pass": true,
-          "reply": "I couldn’t find a machine matching “compressor on Line 9.” Could you give me the exact name or ID of the equipment?",
-          "latency_sec": 1.32
+          "reply": "I’m sorry—I couldn’t find a machine matching “compressor on Line 9.” Could you give me the exact name or ID of the equipment?",
+          "latency_sec": 1.54
         },
         {
           "run": 2,
@@ -619,8 +619,8 @@
           "confidence": null,
           "decision": "ASKED",
           "pass": true,
-          "reply": "I couldn’t find a machine matching “compressor on Line 9.” Could you give me the exact name or ID of the equipment?",
-          "latency_sec": 1.1
+          "reply": "I’m sorry—I couldn’t find a machine matching “compressor on Line 9.” Could you give me the exact name or ID of the equipment?",
+          "latency_sec": 1.29
         }
       ],
       "pass": true

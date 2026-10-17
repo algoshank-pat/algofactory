@@ -1,0 +1,301 @@
+==============================================================================
+MAINTENANCE PLAYBOOK: MOTOR THERMAL OVERLOAD RESPONSE
+Equipment Type: Motor (all models 6208, 6309 bearings)
+Procedure ID: MP-TH-001
+Last Updated: 2026-09-01
+Authority: Regional Engineering Team
+==============================================================================
+
+OVERVIEW
+--------
+This playbook covers response to motor thermal overload alerts (temperature exceeding max_temp_c by 5+ degrees Celsius). The procedure prioritizes immediate safety and minimizes equipment downtime through systematic diagnosis.
+
+SEVERITY LEVELS
+---------------
+Level 1 (Yellow): Temperature 2-5°C above max; stable for <5 minutes → Increase monitoring
+Level 2 (Orange): Temperature 5-10°C above max; sustained >5 minutes → Reduce load and diagnose
+Level 3 (Red): Temperature 10°C+ above max; rising → Shut down immediately
+
+STEP 1: IMMEDIATE RESPONSE (First 5 minutes)
+---------------------------------------------
+Action 1.1: Acknowledge Alert
+- Log alert timestamp and equipment_id in maintenance system
+- Note current load/duty cycle (full load, part load, idle)
+
+Action 1.2: Assess Severity
+- Read current temperature from sensor
+- Compare to baseline (check equipment.csv for max_temp_c)
+- If temperature exceeding max + 10°C and rising, proceed to Step 2
+- If temperature stable or slowly dropping, proceed to Step 3
+
+Action 1.3: Safety Check
+- Verify motor is accessible (no personnel in pinch points)
+- Check for visible smoke, burning smell, or fluid leaks
+- If any danger signs, shut down immediately and clear area
+
+STEP 2: EMERGENCY SHUTDOWN (if temp >max + 10°C)
+--------------------------------------------------
+Action 2.1: Load Reduction
+- If possible, reduce motor load by 50% immediately
+- Do NOT abruptly stop motor (thermal shock can damage windings)
+- Allow 2-3 minute coast-down if equipment allows
+
+Action 2.2: Shutdown
+- Turn off motor starter using main control panel
+- Allow motor to cool naturally for 15 minutes (do not force cool with water/air)
+
+Action 2.3: Escalate
+- Contact shift supervisor immediately
+- Flag equipment_id for urgent inspection (same day)
+- Do not restart without supervisor and engineering approval
+
+STEP 3: SYSTEMATIC DIAGNOSIS (temp 5-10°C above max, stable)
+--------------------------------------------------------------
+Action 3.1: Check Cooling System
+- Visually inspect air intake to motor for blockage (dirt, debris)
+- Verify cooling fan running (listen for hum; check for blade rotation)
+- Check for kinks in cooling hose/ductwork
+- Clean air intake if clogged (use compressed air, never water on running motor)
+- Allow 5 minutes for temperature recovery
+
+If temperature normalizes after cooling inspection:
+→ Go to Step 5: Post-Incident Monitoring
+
+If temperature remains elevated:
+→ Continue to Action 3.2
+
+Action 3.2: Check Bearing/Mechanical Load
+- Stop motor (coast-down if equipment allows)
+- Feel bearing housings by hand (use thermal glove if concerned)
+  - Normal: warm but can hold hand for 3+ seconds
+  - Abnormal: too hot to touch for more than 1 second
+- Listen for grinding, squealing, or rough sounds (bearing wear indicator)
+- If bearing feels excessively hot or sounds rough:
+  → Go to Action 3.3 (Bearing Replacement Needed)
+  → Schedule ASAP; Stage parts (see Parts List section)
+
+If bearing feels normal but mechanical load seems high:
+→ Check motor alignment (use dial indicator if available, <0.05mm runout acceptable)
+→ If misaligned, note for corrective action; escalate to maintenance planner
+
+Action 3.3: Check Electrical Load (if bearing normal, cooling normal)
+- Contact plant electrician
+- Verify motor current draw with clamp ammeter
+  - Normal: <1.2x nameplate current
+  - Abnormal: >1.2x nameplate current = possible winding short or high load from driven equipment
+- If current high and mechanical load normal: likely electrical fault in motor or upstream
+  → Escalate to electrical maintenance; do not restart until cleared
+
+STEP 4: BEARING REPLACEMENT (if bearing wear confirmed)
+---------------------------------------------------------
+Action 4.1: Prepare
+- Schedule replacement during next available maintenance window
+- Verify parts availability (see Parts List section; typical lead time 2-3 days)
+- Alert operations of planned downtime
+- Request bearing puller tool and alignment kit from tool crib
+
+Action 4.2: Bearing Removal & Installation
+- Disconnect motor from power (lockout/tagout procedure)
+- Locate bearing designation on bearing housing (should match equipment.csv bearing_type)
+- Use bearing puller to remove old bearing (do not tap directly; use puller to avoid race damage)
+- Clean bearing journal with lint-free cloth
+- Pack new bearing with appropriate grease (see Parts List: Lubricant Type)
+- Install new bearing using bearing installer tool (press slowly, support inner race only)
+- Spin bearing by hand to ensure free rotation (no grinding)
+
+Action 4.3: Verify & Restart
+- Reconnect motor to power
+- Run at 50% load for 10 minutes; monitor temperature (should stabilize within 5°C of baseline)
+- Check for unusual sounds or vibration
+- If temperature and noise normal, return to full load
+- Document bearing replacement in maintenance log with date, bearing part number, and technician name
+
+STEP 5: POST-INCIDENT MONITORING
+----------------------------------
+Action 5.1: Short-term (24-48 hours)
+- Increase monitoring frequency to every 2 hours
+- Log temperature and load at each check
+- If temperature exceeds baseline + 3°C at any point: repeat diagnosis from Step 3
+
+Action 5.2: Medium-term (1-4 weeks)
+- Reduce monitoring to every 8 hours
+- Continue daily logs
+- Compare trending: if temperature creeping upward despite normal load, bearing replacement likely needed soon
+
+Action 5.3: Root Cause Documentation
+- Complete incident summary: what was root cause (cooling system, bearing wear, electrical)?
+- Note any preventive measures taken
+- Share findings with shift team (whiteboard briefing or email)
+
+==============================================================================
+PARTS LIST: MOTOR THERMAL OVERLOAD
+==============================================================================
+
+Part Name                    | Part Number | Supplier  | Lead Time | Cost
+Bearing 6208 (Ball)         | 6208-2RS    | Supplier-A | 2 days    | $45
+Bearing 6309 (Ball)         | 6309-2RS    | Supplier-A | 2 days    | $60
+Lubricant (ISO 32 turbine)  | OIL-ISO32   | Supplier-A | 1 day     | $25
+Thermal Paste (motor mfg)   | THERM-MP01  | Supplier-B | 1 day     | $12
+Bearing Puller Kit          | TOOL-BP10   | On-site   | N/A       | N/A (tool crib)
+
+EQUIPMENT MAPPING
+Equipment-001, Equipment-002, Equipment-009, Equipment-012, Equipment-016, Equipment-018:
+→ Use Bearing 6208-2RS
+
+Equipment-006, Equipment-011, Equipment-015, Equipment-020:
+→ Use Bearing 6309-2RS
+
+All motors: Use OIL-ISO32 and THERM-MP01
+
+==============================================================================
+
+---
+
+==============================================================================
+MAINTENANCE PLAYBOOK: PUMP SEAL REPLACEMENT
+Equipment Type: Pump (seal-type SA-42)
+Procedure ID: MP-SEAL-001
+Last Updated: 2026-08-28
+Authority: Regional Engineering Team
+==============================================================================
+
+OVERVIEW
+--------
+Pump seals (SA-42) are critical to preventing fluid leakage and maintaining system pressure. This playbook covers replacement when thermal spikes or visible leaks indicate seal failure.
+
+DIAGNOSIS: SEAL FAILURE INDICATORS
+-----------------------------------
+- Visible fluid weeping from pump housing (droplets within 5 minutes of shutdown)
+- Thermal spike at seal area (TH-002 anomaly signature)
+- Increased noise or vibration at pump inlet
+- Sustained pressure drop in system
+
+STEP 1: ASSESS & PREPARE
+------------------------
+- Verify equipment_id and pump type (should match equipment.csv)
+- Shut down pump and depressurize system (open relief valve or bleed screw)
+- Place collection tray under seal area to catch residual fluid
+- Allow 15 minutes for pressure to bleed off and fluid to drain
+
+STEP 2: SEAL REMOVAL
+--------------------
+- Disconnect pump from motor (uncouple)
+- Remove pump from service line (unbolt from manifold)
+- Place pump on bench in clean area
+- Locate seal cartridge (visible as cylindrical component at pump output)
+- Using seal puller tool, carefully extract old seal (do not damage bore)
+- Clean bore thoroughly with lint-free cloth; inspect for scoring or corrosion
+  - Light scoring acceptable (can seal against); deep score requires bore honing or seal replacement
+- Rinse bore with compatible fluid (ISO 46 hydraulic oil) to remove debris
+
+STEP 3: SEAL INSTALLATION
+--------------------------
+- Install new seal cartridge (SA-42) into bore
+- Use seal installer tool to seat seal evenly (no forcing)
+- Spin pump shaft by hand to ensure seal does not bind (should spin freely)
+- Fill pump cavity with hydraulic fluid (ISO 46) to prime pump
+
+STEP 4: REASSEMBLY & TESTING
+-----------------------------
+- Couple pump back to motor
+- Reinstall pump in service line (bolt to manifold)
+- Pressurize system slowly (open relief valve to limit pressure to 50% of max for first 5 minutes)
+- Monitor seal area for leaks (none acceptable; even droplets indicate misalignment)
+- If leak-free for 5 minutes, increase pressure to 75%, monitor another 5 minutes
+- If still leak-free, run at full operating pressure and monitor temperature
+  - Seal should stabilize at baseline temperature within 15 minutes
+  - If temperature spikes, shut down and re-seat seal (misalignment)
+
+STEP 5: SIGN-OFF
+----------------
+- Document seal replacement: date, pump equipment_id, old/new part numbers, technician name
+- Return old seal for analysis (helps identify why it failed: cavitation, dry-run, contamination)
+- Schedule follow-up inspection in 24-48 hours
+
+PARTS LIST
+-----------
+Seal Assembly SA-42      | SEAL-SA42   | Supplier-C | 3-5 days | $180
+Hydraulic Fluid ISO 46   | OIL-ISO46   | Supplier-C | 2 days   | $50
+Seal Puller/Installer Kit| TOOL-SEAL   | On-site   | N/A      | N/A
+
+==============================================================================
+
+---
+
+==============================================================================
+MAINTENANCE PLAYBOOK: COMPRESSOR PISTON RING MAINTENANCE
+Equipment Type: Compressor
+Procedure ID: MP-COMP-001
+Last Updated: 2026-09-05
+Authority: Regional Engineering Team
+==============================================================================
+
+[Abbreviated version for brevity; would include similar steps as above but focused on ring replacement, oil top-off procedures, and compression testing]
+
+OVERVIEW: Piston ring wear reduces compression efficiency, increases discharge temperature, and raises motor current. Early detection and replacement prevents catastrophic failure.
+
+DIAGNOSTICS
+- High discharge temperature (90-100°C baseline)
+- Elevated motor current (>1.2x normal)
+- Oil consumption rate increasing (top-offs more frequent than normal)
+
+BASIC RESPONSE
+1. Check oil level; top off if low (use compressor oil PR-88)
+2. Monitor discharge temperature for 24 hours
+3. If temperature does not drop within 5°C after oil top-off: schedule ring replacement (5-7 day lead time)
+
+PARTS LIST
+Piston Ring Kit PR-88    | RING-PR88   | Supplier-B | 5-7 days | $320
+Compressor Oil ISO 46    | OIL-COMP46  | Supplier-B | 1 day    | $65
+
+==============================================================================
+
+---
+
+==============================================================================
+MAINTENANCE PLAYBOOK: BEARING VIBRATION DIAGNOSIS & REPLACEMENT
+Equipment Type: Motor, Fan, Pump (all equipment with rolling element bearings)
+Procedure ID: MP-VB-BEARING
+Last Updated: 2026-08-30
+Authority: Regional Engineering Team
+==============================================================================
+
+OVERVIEW
+--------
+Vibration anomalies often indicate bearing wear or misalignment. This playbook covers systematic diagnosis to distinguish bearing failure from other mechanical issues.
+
+STEP 1: MEASURE VIBRATION
+--------------------------
+- Place accelerometer on bearing housing (typically on top)
+- Measure peak vibration in mm/s (compare to baseline in equipment.csv column max_vibration_mm_s)
+- If vibration <1.2x baseline: normal (return to routine monitoring)
+- If vibration 1.2-1.5x baseline: elevated but not critical; increase inspection frequency to every 4 hours
+- If vibration >1.5x baseline: urgent (bearing wear suspected); proceed to Action 1.2
+
+STEP 2: ANALYZE VIBRATION SPECTRUM (if equipment >1.2x baseline)
+-----------------------------------------------------------------
+- If vibration is broadband (uniform across frequencies 0-10 kHz): likely bearing race defect or misalignment
+- If vibration shows discrete peaks at running speed and harmonics (1x, 2x, 3x): likely unbalance
+- If vibration shows random spikes: cavitation (for pumps) or loose rotor bars (for motors)
+
+STEP 3: CORRECTIVE ACTIONS
+---------------------------
+
+IF BEARING WEAR SUSPECTED (broadband vibration, feels hot):
+→ Replace bearing (see BEARING REPLACEMENT procedure, MP-TH-001 Step 4)
+
+IF UNBALANCE SUSPECTED (1x, 2x peaks):
+→ For motors/fans: clean blades or check for missing weights; balance if needed
+→ For pumps: inspect impeller for damage; replace if cracked
+
+IF MISALIGNMENT SUSPECTED (broadband, but bearing not hot):
+→ Measure runout between shafts (should be <0.05mm)
+→ If misaligned: re-align and repeat vibration measurement
+→ If vibration improves >20%, misalignment confirmed and corrected
+
+IF CAVITATION (pump vibration + broadband noise + pressure drop):
+→ Follow MP-PUMP-CAVITATION playbook (clean inlet strainer, verify inlet pressure)
+
+PARTS: Standard bearing kit (see MP-TH-001 for specific bearings)
+
+==============================================================================
