@@ -1,0 +1,1838 @@
+[
+  {
+    "updatedAt": "2026-10-16T15:55:14.743Z",
+    "createdAt": "2026-10-16T15:55:14.743Z",
+    "id": "438f43ce2ff04804",
+    "name": "AlgoFactory - 1 Ingest",
+    "description": null,
+    "active": false,
+    "isArchived": false,
+    "nodes": [
+      {
+        "id": "8459632e-0fd9-4cd7-99bd-fae54a3b1987",
+        "name": "1. Manual Trigger",
+        "type": "n8n-nodes-base.manualTrigger",
+        "typeVersion": 1,
+        "position": [
+          0,
+          0
+        ],
+        "parameters": {}
+      },
+      {
+        "id": "c0d48b0b-236a-408a-9770-4b86f7d91dde",
+        "name": "5. Load & Chunk",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          220,
+          0
+        ],
+        "parameters": {
+          "jsCode": "// Node 5: Load and chunk the knowledge-base files from /data\r\n// equipment.csv is not chunked: equipment specs live in Postgres (Station 1 lookup)\r\n// Output: one item per chunk { id, text, metadata }. Also writes /data/chunks.json for BM25 (Node 11).\r\n\r\nconst fs = require('fs');\r\nconst D = '/data/';\r\nconst CHUNK_TOKENS = 500;                       // ~4 chars per token\r\nconst chunks = [];\r\n// Pinecone rejects null metadata values, so drop empty fields\r\nconst add = (source, text, metadata) => chunks.push({\r\n  id: `${source.split('.')[0]}-${chunks.length}`,\r\n  text: text.trim(),\r\n  metadata: Object.fromEntries(Object.entries({ source_doc: source, ...metadata }).filter(([, v]) => v != null && v !== ''))\r\n});\r\n\r\nfunction chunkText(text, maxTokens = CHUNK_TOKENS) {\r\n  const out = []; let cur = '';\r\n  for (const para of text.split(/\\n\\s*\\n/)) {\r\n    if (cur && (cur.length + para.length) / 4 > maxTokens) { out.push(cur); cur = ''; }\r\n    cur += (cur ? '\\n\\n' : '') + para;\r\n  }\r\n  if (cur.trim()) out.push(cur);\r\n  return out;\r\n}\r\n\r\n// anomaly_patterns.md: one chunk per ### signature\r\nfor (const section of fs.readFileSync(D + 'anomaly_patterns.md', 'utf8').split(/\\n(?=### )/).slice(1)) {\r\n  const code = (section.match(/\\b(TH|VB|AC)-\\d{3}\\b/) || ['UNKNOWN'])[0];\r\n  const type = (section.match(/\\*\\*Equipment Type:\\*\\*\\s*([^\\n]+)/) || [, ''])[1].trim();\r\n  for (const part of chunkText(section.split(/\\n## /)[0]))\r\n    add('anomaly_patterns.md', part, { anomaly_code: code, equipment_type: type, chunk_type: 'anomaly_pattern' });\r\n}\r\n\r\n// playbooks.txt: split per playbook (==== banner), then by paragraph\r\nfor (const book of fs.readFileSync(D + 'playbooks.txt', 'utf8').split(/\\n?={20,}\\n(?=MAINTENANCE PLAYBOOK)/)) {\r\n  if (!book.trim()) continue;\r\n  const title = (book.match(/MAINTENANCE PLAYBOOK:\\s*([^\\n]+)/) || [, 'Playbook'])[1].trim();\r\n  const proc = (book.match(/Procedure ID:\\s*(\\S+)/) || [, ''])[1];\r\n  const code = (proc.match(/(TH|VB|AC)-\\d{3}/) || [null])[0];\r\n  for (const part of chunkText(book.replace(/={20,}/g, '')))\r\n    add('playbooks.txt', `${title} (${proc})\\n${part}`, { procedure_id: proc, anomaly_code: code, chunk_type: 'procedure' });\r\n}\r\n\r\n// parts_catalog.json: one chunk per part\r\nfor (const p of JSON.parse(fs.readFileSync(D + 'parts_catalog.json', 'utf8')).parts || []) {\r\n  add('parts_catalog.json',\r\n    `Part ${p.part_id}: ${p.description}. For ${(p.equipment_types || []).join(', ')}. Compatible: ${(p.compatible_equipment_ids || []).join(', ')}. Supplier ${p.supplier_id}, $${p.cost_usd}, lead time ${p.lead_time_days} days. ${p.notes || ''}`,\r\n    { part_id: p.part_id, chunk_type: 'parts' });\r\n}\r\n\r\n// maintenance_schedule.json: one chunk per schedule\r\nfor (const s of JSON.parse(fs.readFileSync(D + 'maintenance_schedule.json', 'utf8')).schedules || []) {\r\n  const effects = Object.entries(s).filter(([k]) => k.startsWith('expected_')).map(([k, v]) => `${k.replace('expected_', '').replace(/_/g, ' ')} ${v}`).join(', ');\r\n  add('maintenance_schedule.json',\r\n    `Scheduled ${s.schedule_type} for ${s.equipment_id}: every ${s.day_of_week} at ${s.time}, method ${s.method}, duration ${s.duration_hours} hours. Expected effects: ${effects}.`,\r\n    { equipment_id: s.equipment_id, chunk_type: 'schedule' });\r\n}\r\n\r\n// environmental_baselines.json: one chunk per baseline\r\nfor (const b of JSON.parse(fs.readFileSync(D + 'environmental_baselines.json', 'utf8')).baselines || []) {\r\n  const facts = Object.entries(b).filter(([k]) => !['equipment_id', 'condition'].includes(k)).map(([k, v]) => `${k.replace(/_/g, ' ')} ${v}`).join(', ');\r\n  add('environmental_baselines.json',\r\n    `Environmental baseline for ${b.equipment_id} (${b.condition.replace(/_/g, ' ')}): ${facts}.`,\r\n    { equipment_id: b.equipment_id, condition: b.condition, chunk_type: 'baseline' });\r\n}\r\n\r\nfs.writeFileSync(D + 'chunks.json', JSON.stringify(chunks));\r\nreturn chunks.map(c => ({ json: c }));\r\n"
+        }
+      },
+      {
+        "id": "db4f87c2-e1ec-4d8b-8255-d4eeeee80b78",
+        "name": "6. Embed Chunks",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          440,
+          0
+        ],
+        "parameters": {
+          "method": "POST",
+          "url": "https://api.fireworks.ai/inference/v1/embeddings",
+          "authentication": "none",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Authorization",
+                "value": "={{ 'Bearer ' + $env.FIREWORKS_API_KEY }}"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ JSON.stringify({ model: \"accounts/fireworks/models/qwen3-embedding-8b\", input: $json.text, dimensions: 1024 }) }}",
+          "options": {
+            "batching": {
+              "batch": {
+                "batchSize": 10,
+                "batchInterval": 200
+              }
+            }
+          }
+        }
+      },
+      {
+        "id": "2cd0caa6-ea24-4680-9aa5-3c2a5bc7fbe9",
+        "name": "7. Pinecone Upsert",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          660,
+          0
+        ],
+        "parameters": {
+          "method": "POST",
+          "url": "https://algomanfactory-uscfsbs.svc.aped-4627-b74a.pinecone.io/vectors/upsert",
+          "authentication": "none",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Api-Key",
+                "value": "={{ $env.PINECONE_API_KEY }}"
+              },
+              {
+                "name": "X-Pinecone-API-Version",
+                "value": "2025-04"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ JSON.stringify({ vectors: [{ id: $('5. Load & Chunk').item.json.id, values: $json.data[0].embedding, metadata: Object.assign({}, $('5. Load & Chunk').item.json.metadata, { text: $('5. Load & Chunk').item.json.text }) }] }) }}",
+          "options": {}
+        }
+      }
+    ],
+    "connections": {
+      "1. Manual Trigger": {
+        "main": [
+          [
+            {
+              "node": "5. Load & Chunk",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "5. Load & Chunk": {
+        "main": [
+          [
+            {
+              "node": "6. Embed Chunks",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "6. Embed Chunks": {
+        "main": [
+          [
+            {
+              "node": "7. Pinecone Upsert",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "settings": {
+      "executionOrder": "v1"
+    },
+    "staticData": null,
+    "meta": null,
+    "nodeGroups": [],
+    "pinData": {},
+    "versionId": "842916cf-a94c-48d2-bb57-7a441264399b",
+    "activeVersionId": null,
+    "versionCounter": 4,
+    "triggerCount": 0,
+    "sourceWorkflowId": null,
+    "tags": [],
+    "shared": [
+      {
+        "updatedAt": "2026-10-16T15:55:14.747Z",
+        "createdAt": "2026-10-16T15:55:14.747Z",
+        "role": "workflow:owner",
+        "workflowId": "438f43ce2ff04804",
+        "projectId": "YGpJMX276ekEPLnt",
+        "project": {
+          "updatedAt": "2026-10-16T12:40:45.454Z",
+          "createdAt": "2026-10-16T12:38:47.605Z",
+          "id": "YGpJMX276ekEPLnt",
+          "name": "Algo Shank <algoshank@gmail.com>",
+          "type": "personal",
+          "icon": null,
+          "description": null,
+          "customTelemetryTags": [],
+          "creatorId": "9c99fa53-6272-4c19-80f9-50f37bfe567d"
+        }
+      }
+    ],
+    "versionMetadata": {
+      "name": null,
+      "description": null
+    }
+  },
+  {
+    "updatedAt": "2026-10-16T19:46:34.000Z",
+    "createdAt": "2026-10-16T15:55:19.204Z",
+    "id": "9b3ede12f642464f",
+    "name": "AlgoFactory - 2 Query",
+    "description": null,
+    "active": true,
+    "isArchived": false,
+    "nodes": [
+      {
+        "id": "3259d341-cf96-411c-9895-97f697485c50",
+        "name": "8. Webhook",
+        "type": "n8n-nodes-base.webhook",
+        "typeVersion": 2,
+        "position": [
+          0,
+          0
+        ],
+        "webhookId": "267497f9-d27a-48a0-8ec4-85857e7c3071",
+        "parameters": {
+          "httpMethod": "POST",
+          "path": "anomaly-check",
+          "responseMode": "responseNode",
+          "options": {}
+        }
+      },
+      {
+        "id": "f048055a-6a41-42cf-a935-abb6e56b357d",
+        "name": "Run Pipeline (Stations 1-4)",
+        "type": "n8n-nodes-base.executeWorkflow",
+        "typeVersion": 1.2,
+        "position": [
+          220,
+          0
+        ],
+        "parameters": {
+          "source": "database",
+          "workflowId": {
+            "__rl": true,
+            "value": "5c7a1f0e2d3b4a69",
+            "mode": "id"
+          },
+          "workflowInputs": {
+            "mappingMode": "defineBelow",
+            "value": {
+              "query": "={{ $json.body.query }}",
+              "equipment_id": "={{ $json.body.equipment_id }}",
+              "timestamp": "={{ $json.body.timestamp }}",
+              "source": "={{ $json.body.source || 'sensor' }}"
+            },
+            "matchingColumns": [],
+            "schema": [
+              {
+                "id": "query",
+                "displayName": "query",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "canBeUsedToMatch": true,
+                "type": "any",
+                "removed": false
+              },
+              {
+                "id": "equipment_id",
+                "displayName": "equipment_id",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "canBeUsedToMatch": true,
+                "type": "any",
+                "removed": false
+              },
+              {
+                "id": "timestamp",
+                "displayName": "timestamp",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "canBeUsedToMatch": true,
+                "type": "any",
+                "removed": false
+              },
+              {
+                "id": "source",
+                "displayName": "source",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "canBeUsedToMatch": true,
+                "type": "any",
+                "removed": false
+              }
+            ],
+            "attemptToConvertTypes": false,
+            "convertFieldsToString": false
+          },
+          "options": {
+            "waitForSubWorkflow": true
+          }
+        }
+      },
+      {
+        "id": "80f4bf7f-8452-4750-9ea5-00fb11754081",
+        "name": "18. Respond to Webhook",
+        "type": "n8n-nodes-base.respondToWebhook",
+        "typeVersion": 1.1,
+        "position": [
+          440,
+          0
+        ],
+        "parameters": {
+          "respondWith": "firstIncomingItem",
+          "options": {}
+        }
+      }
+    ],
+    "connections": {
+      "8. Webhook": {
+        "main": [
+          [
+            {
+              "node": "Run Pipeline (Stations 1-4)",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Run Pipeline (Stations 1-4)": {
+        "main": [
+          [
+            {
+              "node": "18. Respond to Webhook",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "settings": {
+      "executionOrder": "v1"
+    },
+    "staticData": null,
+    "meta": null,
+    "nodeGroups": [],
+    "pinData": {},
+    "versionId": "9f295b7d-f7db-42be-8841-42044f749b41",
+    "activeVersionId": "9f295b7d-f7db-42be-8841-42044f749b41",
+    "versionCounter": 8,
+    "triggerCount": 1,
+    "sourceWorkflowId": null,
+    "tags": [],
+    "shared": [
+      {
+        "updatedAt": "2026-10-16T15:55:19.208Z",
+        "createdAt": "2026-10-16T15:55:19.208Z",
+        "role": "workflow:owner",
+        "workflowId": "9b3ede12f642464f",
+        "projectId": "YGpJMX276ekEPLnt",
+        "project": {
+          "updatedAt": "2026-10-16T12:40:45.454Z",
+          "createdAt": "2026-10-16T12:38:47.605Z",
+          "id": "YGpJMX276ekEPLnt",
+          "name": "Algo Shank <algoshank@gmail.com>",
+          "type": "personal",
+          "icon": null,
+          "description": null,
+          "customTelemetryTags": [],
+          "creatorId": "9c99fa53-6272-4c19-80f9-50f37bfe567d"
+        }
+      }
+    ],
+    "versionMetadata": {
+      "name": null,
+      "description": null
+    }
+  },
+  {
+    "updatedAt": "2026-10-16T19:46:29.000Z",
+    "createdAt": "2026-10-16T19:32:25.647Z",
+    "id": "5c7a1f0e2d3b4a69",
+    "name": "AlgoFactory - 3 Pipeline",
+    "description": null,
+    "active": true,
+    "isArchived": false,
+    "nodes": [
+      {
+        "id": "534d7238-1474-4b93-9a64-f79b8616c9ef",
+        "name": "Pipeline Input",
+        "type": "n8n-nodes-base.executeWorkflowTrigger",
+        "typeVersion": 1.1,
+        "position": [
+          0,
+          0
+        ],
+        "parameters": {
+          "inputSource": "workflowInputs",
+          "workflowInputs": {
+            "values": [
+              {
+                "name": "query",
+                "type": "any"
+              },
+              {
+                "name": "equipment_id",
+                "type": "any"
+              },
+              {
+                "name": "timestamp",
+                "type": "any"
+              },
+              {
+                "name": "source",
+                "type": "any"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "id": "8774bfa4-3476-4f16-ba64-298816da7d1d",
+        "name": "9. Parse Intent",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          220,
+          0
+        ],
+        "parameters": {
+          "jsCode": "// Node 9: Parse intent from the webhook body\r\n// Input: Webhook item. Body: { \"query\": \"Equipment-001 humidity 75%\", \"timestamp\": \"2026-10-19T08:30\" }\r\n// timestamp is optional (local plant time, no \"Z\"). Omit it to use the current time.\r\n\r\nconst item = $input.first().json;\r\nconst body = item.body || item;            // Webhook node puts the payload under \"body\"\r\nconst query = (body.query || \"\").trim();\r\nconst timestamp = body.timestamp || null;\r\nconst source = body.source || 'sensor';      // sensor | chat | test | dashboard\r\n\r\n// Equipment ID\r\nconst equipmentMatch = query.match(/Equipment-(\\d{3})/i);\r\n// The chatbot passes the ID it resolved with lookup_equipment; sensor alerts carry it in the text\r\nconst equipment_id = body.equipment_id || (equipmentMatch ? `Equipment-${equipmentMatch[1]}` : null);\r\n\r\n// Anomaly code (TH/VB/AC) or sensor type\r\nlet anomaly_type = null;\r\nlet sensor_type = null;\r\nconst codeMatch = query.match(/\\b(TH|VB|AC)-\\d{3}\\b/i);\r\n\r\nif (codeMatch) {\r\n  anomaly_type = codeMatch[0].toUpperCase();\r\n  sensor_type = { TH: \"temperature\", VB: \"vibration\", AC: \"acoustic\" }[anomaly_type.slice(0, 2)];\r\n} else if (/humid|moisture|\\bwet\\b/i.test(query)) {\r\n  // Checked before acoustic: \"humidity\" contains \"hum\"\r\n  anomaly_type = \"ENV-HUMIDITY\";           // No signature in anomaly_patterns.md; environmental reading\r\n  sensor_type = \"humidity\";\r\n} else if (/temp|heat|\\bhot\\b|thermal|overheat/i.test(query)) {\r\n  anomaly_type = \"TH-001\";\r\n  sensor_type = \"temperature\";\r\n} else if (/vibrat|shak|wobbl/i.test(query)) {\r\n  anomaly_type = \"VB-001\";\r\n  sensor_type = \"vibration\";\r\n} else if (/noise|sound|acoustic|squeak|whistl|hiss|grind|\\bhum\\b|buzz/i.test(query)) {\r\n  anomaly_type = \"AC-001\";\r\n  sensor_type = \"acoustic\";\r\n}\r\n\r\n// Sensor value: number followed by a unit\r\nlet sensor_value = null;\r\nconst valueMatch = query.match(/(\\d+(?:\\.\\d+)?)\\s*(°\\s?C|°\\s?F|mm\\/s|dB|%|C\\b|F\\b)/i);\r\nif (valueMatch) sensor_value = parseFloat(valueMatch[1]);\r\n\r\n// Query rewriting: when the anomaly was inferred from symptom words, add the domain terms the docs use\r\nconst EXPANSION = {\r\n  temperature: \"thermal overload temperature exceeds max_temp_c\",\r\n  vibration: \"vibration bearing wear signature\",\r\n  acoustic: \"acoustic noise\",\r\n  humidity: \"humidity environmental baseline cleaning\"\r\n};\r\nconst search_query = codeMatch || !sensor_type ? query : `${query} ${anomaly_type} ${EXPANSION[sensor_type]}`;\r\n\r\nreturn [{\r\n  json: {\r\n    equipment_id,\r\n    anomaly_type,\r\n    sensor_type,\r\n    sensor_value,\r\n    timestamp,\r\n    raw_query: query,\r\n    source,\r\n    search_query,\r\n    started_at: Date.now()                  // For latency measurement in Node 17\r\n  }\r\n}];\r\n"
+        }
+      },
+      {
+        "id": "e815dffd-4545-4ee6-81b9-dd8f46879a70",
+        "name": "9b. Lookup Equipment",
+        "type": "n8n-nodes-base.postgres",
+        "typeVersion": 2.5,
+        "position": [
+          330,
+          160
+        ],
+        "alwaysOutputData": true,
+        "credentials": {
+          "postgres": {
+            "id": "AlgoManPgCred0001",
+            "name": "AlgoMan Postgres"
+          }
+        },
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "SELECT * FROM equipment WHERE equipment_id = $1;",
+          "options": {
+            "queryReplacement": "={{ $json.equipment_id || 'NO-ID' }}"
+          }
+        }
+      },
+      {
+        "id": "95efa637-5a37-4b29-84dd-f016381cb677",
+        "name": "10a. Embed Query",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          440,
+          0
+        ],
+        "parameters": {
+          "method": "POST",
+          "url": "https://api.fireworks.ai/inference/v1/embeddings",
+          "authentication": "none",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Authorization",
+                "value": "={{ 'Bearer ' + $env.FIREWORKS_API_KEY }}"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ JSON.stringify({ model: 'accounts/fireworks/models/qwen3-embedding-8b', input: $('9. Parse Intent').first().json.search_query, dimensions: 1024 }) }}",
+          "options": {}
+        }
+      },
+      {
+        "id": "4218db81-cbe7-4e61-a6d0-447410261c9b",
+        "name": "10b. Pinecone Query",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          660,
+          0
+        ],
+        "parameters": {
+          "method": "POST",
+          "url": "https://algomanfactory-uscfsbs.svc.aped-4627-b74a.pinecone.io/query",
+          "authentication": "none",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Api-Key",
+                "value": "={{ $env.PINECONE_API_KEY }}"
+              },
+              {
+                "name": "X-Pinecone-API-Version",
+                "value": "2025-04"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ JSON.stringify({ vector: $json.data[0].embedding, topK: 20, includeMetadata: true }) }}",
+          "options": {}
+        }
+      },
+      {
+        "id": "3e18c36e-de81-4ee0-9ae1-13175a9130d3",
+        "name": "11. BM25 Search",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          880,
+          0
+        ],
+        "parameters": {
+          "jsCode": "// Node 11: BM25 sparse search (in memory over /data/chunks.json written by Node 5)\n// Input: Node 10b output (passed through). Query terms come from Node 9.\n\nconst fs = require('fs');\nconst intent = $('9. Parse Intent').first().json;\nconst chunks = JSON.parse(fs.readFileSync('/data/chunks.json', 'utf8'));\n\nconst STOP = new Set(['the', 'a', 'an', 'and', 'or', 'of', 'to', 'in', 'on', 'for', 'is', 'at', 'by', 'with', 'from', 'if', 'be', 'as', 'it', 'this', 'that']);\nconst tokenize = s => (s || '').toLowerCase().split(/[^a-z0-9-]+/).filter(t => t.length > 1 && !STOP.has(t));\n\nconst queryTerms = [...new Set(tokenize([intent.search_query, intent.equipment_id, intent.anomaly_type, intent.sensor_type].filter(Boolean).join(' ')))];\n\n// BM25 (k1 = 1.2, b = 0.75)\nconst k1 = 1.2, b = 0.75;\nconst docs = chunks.map(c => tokenize(c.text));\nconst avgLen = docs.reduce((n, d) => n + d.length, 0) / docs.length;\nconst df = {};\nfor (const d of docs) for (const t of new Set(d)) df[t] = (df[t] || 0) + 1;\n\nconst scored = docs.map((d, i) => {\n  const tf = {};\n  for (const t of d) tf[t] = (tf[t] || 0) + 1;\n  let score = 0;\n  for (const t of queryTerms) {\n    if (!tf[t]) continue;\n    const idf = Math.log(1 + (docs.length - df[t] + 0.5) / (df[t] + 0.5));\n    score += idf * (tf[t] * (k1 + 1)) / (tf[t] + k1 * (1 - b + b * d.length / avgLen));\n  }\n  return { id: chunks[i].id, text: chunks[i].text, metadata: chunks[i].metadata, score };\n});\n\nconst sparse = scored.filter(s => s.score > 0).sort((a, b) => b.score - a.score).slice(0, 10);\nreturn [{ json: { query_terms: queryTerms, sparse } }];\n"
+        }
+      },
+      {
+        "id": "89e4c00d-5dde-4d22-adc8-a480bb70b986",
+        "name": "12. Merge Results",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          1100,
+          0
+        ],
+        "parameters": {
+          "jsCode": "// Node 12: Merge dense + sparse (70% / 30%), deduplicate, keep top 10, build the rerank request\r\n// Inputs: $input -> Node 11 { sparse }, $('10b. Pinecone Query') -> { matches }\r\n\r\nconst intent = $('9. Parse Intent').first().json;\r\nconst dense = ($('10b. Pinecone Query').first().json.matches || []).map(m => ({\r\n  id: m.id, text: m.metadata?.text || '', metadata: m.metadata || {}, score: m.score\r\n}));\r\nconst sparse = $input.first().json.sparse || [];\r\n\r\n// Normalize each list to 0-1 by its max score\r\nconst norm = list => { const max = Math.max(...list.map(x => x.score), 1e-9); return new Map(list.map(x => [x.id, { ...x, n: x.score / max }])); };\r\nconst D = norm(dense), S = norm(sparse);\r\n\r\nconst ranked = [...new Set([...D.keys(), ...S.keys()])].map(id => {\r\n  const d = D.get(id), s = S.get(id), base = d || s;\r\n  const dn = d ? d.n : 0, sn = s ? s.n : 0;\r\n  return { id, text: base.text, metadata: base.metadata, dense: +dn.toFixed(3), sparse: +sn.toFixed(3), hybrid: +(0.7 * dn + 0.3 * sn).toFixed(3) };\r\n}).sort((a, b) => b.hybrid - a.hybrid);\r\n\r\n// Station 1 equipment row (Postgres) goes in as one context chunk, so rerank and the LLM see the spec\r\nconst eq = $('9b. Lookup Equipment').first().json;\r\nconst spec = eq && eq.equipment_id ? {\r\n  id: `equipment-db-${eq.equipment_id}`,\r\n  text: `Equipment ${eq.equipment_id} (${eq.name}): ${eq.type} at ${eq.plant} ${eq.location}. Max temperature ${eq.max_temp_c}°C. Max vibration ${eq.max_vibration_mm_s} mm/s. Bearing ${eq.bearing_type}. Supplier ${eq.supplier_id}.`,\r\n  metadata: { source_doc: 'postgres.equipment', equipment_id: eq.equipment_id, chunk_type: 'equipment_spec' },\r\n  dense: 0, sparse: 0, hybrid: 0\r\n} : null;\r\nconst merged = [...(spec ? [spec] : []), ...ranked].slice(0, 10);\r\n\r\nreturn [{\r\n  json: {\r\n    candidates: merged,\r\n    rerank_body: {\r\n      model: 'bge-reranker-v2-m3',\r\n      query: intent.search_query,\r\n      top_n: 3,\r\n      return_documents: false,\r\n      documents: merged.map(c => ({ id: c.id, text: c.text }))\r\n    }\r\n  }\r\n}];\r\n"
+        }
+      },
+      {
+        "id": "32b40efb-f69f-440f-aec9-f1309b472c08",
+        "name": "13. Rerank",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          1320,
+          0
+        ],
+        "parameters": {
+          "method": "POST",
+          "url": "https://api.pinecone.io/rerank",
+          "authentication": "none",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Api-Key",
+                "value": "={{ $env.PINECONE_API_KEY }}"
+              },
+              {
+                "name": "X-Pinecone-API-Version",
+                "value": "2025-04"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ JSON.stringify($json.rerank_body) }}",
+          "options": {}
+        }
+      },
+      {
+        "id": "fc33960b-3a1d-4635-8cd9-301fba39220c",
+        "name": "14. Validate",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          1540,
+          0
+        ],
+        "parameters": {
+          "jsCode": "// Node 14: 5-layer contextual validation (Layer 0 + the 4 design layers)\r\n// Inputs:\r\n//   $input            -> Node 13 rerank response { data: [{ index, score }] }\r\n//   $('9. Parse Intent')   -> equipment_id, anomaly_type, sensor_type, sensor_value, timestamp\r\n//   $('12. Merge Results') -> candidates (the documents sent to rerank, same order)\r\n//   $('9b. Lookup Equipment') -> equipment row from Postgres\r\n//   /data/*.json -> schedules, baselines\r\n\r\nconst fs = require('fs');\r\nconst intent = $('9. Parse Intent').first().json;\r\nconst candidates = $('12. Merge Results').first().json.candidates || [];\r\nconst rerank = $input.first().json.data || [];\r\n\r\nconst { equipment_id, anomaly_type, sensor_type, sensor_value, timestamp, raw_query } = intent;\r\n\r\n// ----- Tunable weights (adjust after the first test run) -----\r\nconst W = {\r\n  RETRIEVAL_MAX: 50,        // Layer 0: top rerank score (0-1) x 50\r\n  SENSOR_EXCEEDS: 40,       // Layer 1: at or above rated limit\r\n  SENSOR_NEAR: 20,          // Layer 1: within 10% of limit\r\n  SYMPTOM_ONLY: 25,         // Layer 1: specific symptom words, no reading\r\n  NO_EXPLANATION: 5,        // Layer 2: validated reading and nothing scheduled explains it\r\n  SCHEDULE_EXPLAINS: -40,   // Layer 2: active cleaning/maintenance explains the reading\r\n  MAINTENANCE_ACTIVE: -15,  // Layer 2: equipment in maintenance, anomalies expected\r\n  BASELINE_NORMAL: -15,     // Layer 3: within expected range for current conditions\r\n  RECURRING: -5,            // Layer 4: explained by a weekly recurring schedule\r\n  BENIGN_CAP: 10,           // Confirmed scheduled cause caps confidence\r\n  THRESHOLD: 60             // >= generate, < escalate\r\n};\r\n\r\n// ----- Reference data -----\r\nconst readJson = (f, key) => { try { return JSON.parse(fs.readFileSync(f, 'utf8'))[key] || []; } catch (e) { return []; } };\r\nconst schedules = readJson('/data/maintenance_schedule.json', 'schedules');\r\nconst baselines = readJson('/data/environmental_baselines.json', 'baselines');\r\n\r\n// Equipment spec from Postgres (Station 1, Node 9b). Empty item when no ID was given or no row matched.\r\nconst row = $('9b. Lookup Equipment').first().json;\r\nconst equipment = row && row.equipment_id ? row : null;\r\n\r\n// ----- Clock: request timestamp, PLANT_CLOCK env var, or now (local plant time) -----\r\nconst DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];\r\nfunction clock() {\r\n  // Request timestamp, else PLANT_CLOCK (tests/demo), else now\r\n  const m = (timestamp || $env.PLANT_CLOCK || '').match(/(\\d{4})-(\\d{2})-(\\d{2})[T ](\\d{2}):(\\d{2})/);\r\n  if (m) {\r\n    const d = new Date(Date.UTC(+m[1], +m[2] - 1, +m[3]));\r\n    return { day: DAYS[d.getUTCDay()], hour: +m[4] + +m[5] / 60, month: +m[2] - 1 };\r\n  }\r\n  return { day: $now.weekdayLong, hour: $now.hour + $now.minute / 60, month: $now.month - 1 };\r\n}\r\nconst now = clock();\r\nconst toHour = t => { const [h, mi] = (t || '00:00').split(':').map(Number); return h + mi / 60; };\r\n\r\n// Schedules for this equipment active right now: same weekday, between start and end + grace hours\r\nfunction activeSchedules(graceHours) {\r\n  return schedules.filter(s => {\r\n    if (s.equipment_id !== equipment_id) return false;\r\n    if (s.day_of_week && s.day_of_week !== now.day) return false;\r\n    const start = toHour(s.time);\r\n    return now.hour >= start && now.hour <= start + (s.duration_hours || 1) + graceHours;\r\n  });\r\n}\r\n\r\nconst topChunks = rerank.map(r => ({ ...candidates[r.index], rerank_score: r.score }));\r\nconst reasons = {};\r\n\r\n// ===== LAYER 0: Retrieval relevance (0 to 50) =====\r\n// How well the knowledge base supports a diagnosis for this query\r\nfunction layer0() {\r\n  const top = topChunks.length ? topChunks[0].rerank_score : 0;\r\n  reasons.layer0 = `Top rerank score ${top.toFixed(2)}`;\r\n  return Math.round(top * W.RETRIEVAL_MAX);\r\n}\r\n\r\n// ===== LAYER 1: Sensor cross-check (0 to 40) =====\r\nfunction layer1() {\r\n  if (sensor_value == null) {\r\n    const specific = /\\bhot\\b|overheat|burning|smok|grind|vibrat|shak|leak|whistl|hiss/i.test(raw_query);\r\n    reasons.layer1 = specific ? 'No reading; specific symptom reported' : 'No reading; vague report';\r\n    return specific ? W.SYMPTOM_ONLY : 0;\r\n  }\r\n  let limit = null, label = '';\r\n  if (sensor_type === 'temperature') {\r\n    limit = equipment ? +equipment.max_temp_c : 80; label = 'max_temp_c';\r\n  } else if (sensor_type === 'vibration') {\r\n    limit = equipment ? +equipment.max_vibration_mm_s : 7.1; label = 'max_vibration_mm_s';\r\n  } else if (sensor_type === 'humidity') {\r\n    const b = baselines.find(x => x.equipment_id === equipment_id && x.humidity_baseline != null);\r\n    limit = (b ? b.humidity_baseline : 50) + 15; label = 'humidity baseline + 15';\r\n  }\r\n  if (limit == null) { reasons.layer1 = `No limit for sensor type ${sensor_type}`; return 0; }\r\n  if (sensor_value >= limit) { reasons.layer1 = `${sensor_value} >= ${label} ${limit}`; return W.SENSOR_EXCEEDS; }\r\n  if (sensor_value >= limit * 0.9) { reasons.layer1 = `${sensor_value} within 10% of ${label} ${limit}`; return W.SENSOR_NEAR; }\r\n  reasons.layer1 = `${sensor_value} below ${label} ${limit}`;\r\n  return 0;\r\n}\r\n\r\n// ===== LAYER 2: Schedule context (-40 to +5) =====\r\nlet explainingSchedule = null;\r\nfunction layer2(l1) {\r\n  const active = activeSchedules(1);\r\n  for (const s of active) {\r\n    if (s.method === 'wet-wash' && sensor_type === 'humidity') {\r\n      const b = baselines.find(x => x.equipment_id === equipment_id && x.humidity_baseline != null);\r\n      const expectedMax = (b ? b.humidity_baseline : 50) + (s.expected_humidity_elevation || 20) + 5;\r\n      if (sensor_value == null || sensor_value <= expectedMax) {\r\n        explainingSchedule = s;\r\n        reasons.layer2 = `${s.method} ${s.schedule_type} ${s.day_of_week || ''} ${s.time} (${s.duration_hours}h) explains humidity up to ${expectedMax}%`;\r\n        return W.SCHEDULE_EXPLAINS;\r\n      }\r\n    }\r\n    if (s.method === 'wet-wash' && sensor_type === 'acoustic') {\r\n      explainingSchedule = s;\r\n      reasons.layer2 = `Wet-wash at ${s.time} causes acoustic false positives`;\r\n      return W.SCHEDULE_EXPLAINS;\r\n    }\r\n    if (/maintenance|replacement/.test(`${s.schedule_type} ${s.method}`)) {\r\n      reasons.layer2 = `${s.method} in progress since ${s.time}; anomalies expected`;\r\n      return W.MAINTENANCE_ACTIVE;\r\n    }\r\n  }\r\n  if (l1 >= W.SENSOR_EXCEEDS) { reasons.layer2 = 'Nothing scheduled explains the reading'; return W.NO_EXPLANATION; }\r\n  reasons.layer2 = 'No active schedule';\r\n  return 0;\r\n}\r\n\r\n// ===== LAYER 3: Environmental baseline (-25 to 0) =====\r\nfunction layer3() {\r\n  let score = 0;\r\n  for (const b of baselines.filter(x => x.equipment_id === equipment_id)) {\r\n    if (b.condition === 'post_cleaning' && sensor_type === 'humidity' && sensor_value != null) {\r\n      const inWindow = activeSchedules(b.humidity_elevated_for_hours || 2).some(s => /wash|clean/.test(`${s.method} ${s.schedule_type}`));\r\n      if (inWindow && sensor_value <= b.humidity_max_expected) {\r\n        reasons.layer3 = `Post-cleaning max expected ${b.humidity_max_expected}%; reading ${sensor_value}% is normal`;\r\n        score = Math.min(score, W.BASELINE_NORMAL);\r\n      }\r\n    }\r\n    if (b.condition === 'summer_season' && sensor_type === 'temperature' && sensor_value != null) {\r\n      if (now.month >= 5 && now.month <= 7 && sensor_value <= b.temperature_max_expected) {\r\n        reasons.layer3 = `Summer max expected ${b.temperature_max_expected}°C; reading is normal`;\r\n        score = Math.min(score, -10);\r\n      }\r\n    }\r\n  }\r\n  if (!reasons.layer3) reasons.layer3 = 'No baseline condition applies';\r\n  return score;\r\n}\r\n\r\n// ===== LAYER 4: Historical pattern (-5 to 0) =====\r\n// A weekly recurring schedule that explains the reading means this alert repeats every week\r\nfunction layer4() {\r\n  if (explainingSchedule && explainingSchedule.day_of_week) {\r\n    reasons.layer4 = `Recurs every ${explainingSchedule.day_of_week} with the ${explainingSchedule.schedule_type}`;\r\n    return W.RECURRING;\r\n  }\r\n  reasons.layer4 = 'No recurring benign pattern';\r\n  return 0;\r\n}\r\n\r\nconst layerScores = {};\r\nlayerScores.layer0 = layer0();\r\nlayerScores.layer1 = layer1();\r\nlayerScores.layer2 = layer2(layerScores.layer1);\r\nlayerScores.layer3 = layer3();\r\nlayerScores.layer4 = layer4();\r\n\r\nconst raw = Object.values(layerScores).reduce((a, b) => a + b, 0);\r\nlet confidence = Math.max(0, Math.min(100, raw));\r\nif (layerScores.layer2 === W.SCHEDULE_EXPLAINS) confidence = Math.min(confidence, W.BENIGN_CAP);\r\n\r\nconst decision = confidence >= W.THRESHOLD ? 'generate' : 'escalate';\r\nconst status = decision === 'generate' ? 'ALERT'\r\n  : (layerScores.layer2 === W.SCHEDULE_EXPLAINS || layerScores.layer3 < 0) ? 'FALSE POSITIVE'\r\n  : 'NEEDS INVESTIGATION';\r\nconst needs_clarification = !equipment_id && sensor_value == null && layerScores.layer1 === 0;\r\n\r\nlet explanation = '';\r\nif (status === 'FALSE POSITIVE') explanation = `${reasons.layer2}. ${reasons.layer3}.`;\r\nelse if (status === 'ALERT') explanation = `${reasons.layer1}. ${reasons.layer2}.`;\r\nelse explanation = needs_clarification\r\n  ? 'Query is too vague: no equipment ID or sensor reading. Ask the operator which equipment and what was observed.'\r\n  : `${reasons.layer1}. Evidence is not strong enough to diagnose.`;\r\n\r\n// When a cleaning explains the reading: hour the elevated reading should clear (start + duration + elevated window)\r\nlet recovery_time = null;\r\nif (explainingSchedule) {\r\n  const b = baselines.find(x => x.equipment_id === equipment_id && x.condition === 'post_cleaning');\r\n  const end = toHour(explainingSchedule.time) + (explainingSchedule.duration_hours || 1) + (b?.humidity_elevated_for_hours || 0);\r\n  recovery_time = `${String(Math.floor(end)).padStart(2, '0')}:${String(Math.round((end % 1) * 60)).padStart(2, '0')}`;\r\n}\r\n\r\nreturn [{\r\n  json: {\r\n    equipment_id, anomaly_type, sensor_type, sensor_value, timestamp, raw_query,\r\n    equipment_spec: equipment, recovery_time,\r\n    confidence, raw_score: raw, layerScores, reasons,\r\n    decision, status, needs_clarification, explanation,\r\n    topChunks: topChunks.map(c => ({ id: c.id, text: c.text, metadata: c.metadata, rerank_score: c.rerank_score }))\r\n  }\r\n}];\r\n"
+        }
+      },
+      {
+        "id": "a911e275-ced7-47f7-a9e8-e36cefda5000",
+        "name": "14b. Route",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2.2,
+        "position": [
+          1760,
+          0
+        ],
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "strict",
+              "version": 2
+            },
+            "conditions": [
+              {
+                "id": "032e8102-760d-46ed-9c61-049af3780f86",
+                "leftValue": "={{ $json.decision }}",
+                "rightValue": "generate",
+                "operator": {
+                  "type": "string",
+                  "operation": "equals"
+                }
+              }
+            ],
+            "combinator": "and"
+          },
+          "options": {}
+        }
+      },
+      {
+        "id": "ea14f7f8-cb4b-4afa-a941-68c71a1a3b3b",
+        "name": "15. Build Prompt",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          1980,
+          -120
+        ],
+        "parameters": {
+          "jsCode": "// Node 15: Build the LLM request (status and confidence are decided by Node 14, not the LLM)\n\nconst v = $input.first().json;\nconst context = (v.topChunks || []).map((c, i) => `[${i + 1}] (${c.metadata?.source_doc}) ${c.text}`).join('\\n\\n');\n\nconst task = {\n  'ALERT': 'Give a confident diagnosis and recommended action. Name the playbook procedure ID and any parts with lead time if the context lists them.',\n  'FALSE POSITIVE': 'Explain that the alert is a false positive and why, using the validation findings. State that no action is needed and when readings should return to normal.',\n  'NEEDS INVESTIGATION': v.needs_clarification\n    ? 'Say the report is too vague to diagnose. Ask for the equipment ID and the sensor reading or symptom observed.'\n    : 'Say the evidence is not strong enough to confirm a fault. Suggest what to check next.'\n}[v.status];\n\nconst prompt = `You are AlgoFactory, a manufacturing maintenance assistant. Use ONLY the context and validation findings below. Do not invent values.\n\nCONTEXT:\n${context || '(no relevant documents)'}\n\nALERT: ${v.raw_query}\nEQUIPMENT: ${v.equipment_id || 'unknown'} | SENSOR: ${v.sensor_type || 'unknown'} ${v.sensor_value ?? ''}\nSTATUS (decided by validation): ${v.status}\nCONFIDENCE: ${v.confidence}%\nVALIDATION FINDINGS: ${v.explanation}\n\nTASK: ${task}\n\nReply in at most 4 short lines:\nStatus: ${v.status}\nDiagnosis: ...\nAction: ...\nParts: ... (or \"None\")`;\n\nreturn [{\n  json: {\n    llm_body: {\n      model: 'accounts/fireworks/models/gpt-oss-120b',\n      temperature: 0,\n      max_tokens: 200,             // ALERT answers stop naturally at ~150 tokens\n      reasoning_effort: 'low',\n      messages: [{ role: 'user', content: prompt }]\n    }\n  }\n}];\n"
+        }
+      },
+      {
+        "id": "db2cc3f6-1d1f-4137-ab5a-1e98bbd3868a",
+        "name": "16. Fireworks LLM",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          2200,
+          -120
+        ],
+        "parameters": {
+          "method": "POST",
+          "url": "https://api.fireworks.ai/inference/v1/chat/completions",
+          "authentication": "none",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Authorization",
+                "value": "={{ 'Bearer ' + $env.FIREWORKS_API_KEY }}"
+              }
+            ]
+          },
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={{ JSON.stringify($json.llm_body) }}",
+          "options": {}
+        }
+      },
+      {
+        "id": "299d7cf3-7e24-4d60-b519-1ee926c4a87a",
+        "name": "15b. Template Response",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          2090,
+          120
+        ],
+        "parameters": {
+          "jsCode": "// Node 15b: Template response for escalations (no LLM call)\n// Escalations are fully decided by Node 14, so a template is faster (~1 s saved) and cannot hallucinate.\n// Output matches the Fireworks response shape so Node 17 handles both paths.\n\nconst v = $input.first().json;\nlet lines;\n\nif (v.status === 'FALSE POSITIVE') {\n  lines = [\n    'Status: FALSE POSITIVE',\n    `Diagnosis: ${v.sensor_type} ${v.sensor_value ?? ''} on ${v.equipment_id} is explained by context. ${v.explanation}`.replace(/\\s+/g, ' ').trim(),\n    `Action: No action needed.${v.recovery_time ? ` Readings should return to baseline by ${v.recovery_time}.` : ''}`,\n    'Parts: None'\n  ];\n} else if (v.needs_clarification) {\n  lines = [\n    'Status: NEEDS INVESTIGATION',\n    'Diagnosis: Report is too vague to diagnose: no equipment ID or sensor reading.',\n    'Action: Specify the equipment ID and the sensor reading or symptom observed.',\n    'Parts: None'\n  ];\n} else {\n  lines = [\n    'Status: NEEDS INVESTIGATION',\n    `Diagnosis: ${v.reasons?.layer1 || 'Sensor evidence unclear'}. Evidence is not strong enough to confirm a fault (confidence ${v.confidence}%).`,\n    `Action: Verify the sensor reading on ${v.equipment_id || 'the equipment'} and keep monitoring; escalate to a technician if it keeps rising.`,\n    'Parts: None'\n  ];\n}\n\nreturn [{ json: { source: 'template', choices: [{ message: { content: lines.join('\\n') } }] } }];\n"
+        }
+      },
+      {
+        "id": "87c5fb23-e628-46fb-a00a-f035f5ca20f5",
+        "name": "17. Format Response",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          2420,
+          0
+        ],
+        "parameters": {
+          "jsCode": "// Node 17: Format the final response\r\n// Inputs: $input -> Node 16 Fireworks response, $('14. Validate') -> scores, $('9. Parse Intent') -> start time\r\n\r\nconst v = $('14. Validate').first().json;\r\nconst started = $('9. Parse Intent').first().json.started_at;\r\nconst llm = $input.first().json;\r\nconst ACTION = { 'ALERT': 'ACT', 'FALSE POSITIVE': 'HOLD', 'NEEDS INVESTIGATION': 'ESCALATE' };\r\nconst text = llm.choices?.[0]?.message?.content?.trim() || 'Unable to generate response.';\r\n\r\nreturn [{\r\n  json: {\r\n    query: v.raw_query,\r\n    equipment_id: v.equipment_id,\r\n    equipment_name: v.equipment_spec?.name || null,\r\n    source: $('9. Parse Intent').first().json.source,\r\n    action: ACTION[v.status],\r\n    sensor_type: v.sensor_type,\r\n    sensor_value: v.sensor_value,\r\n    confidence_score: Math.round(v.confidence),\r\n    decision: v.decision,\r\n    status: v.status,\r\n    needs_clarification: v.needs_clarification,\r\n    explanation: v.explanation,\r\n    layer_scores: v.layerScores,\r\n    layer_reasons: v.reasons,\r\n    sources: v.topChunks.map(c => ({ id: c.id, source: c.metadata?.source_doc, rerank_score: +c.rerank_score.toFixed(3) })),\r\n    response: text,\r\n    response_source: llm.source || 'llm',\r\n    latency_sec: +((Date.now() - started) / 1000).toFixed(2),\r\n    timestamp: new Date().toISOString()\r\n  }\r\n}];\r\n"
+        }
+      },
+      {
+        "id": "3640bf35-113b-430e-9a15-620585acc3a8",
+        "name": "18a. Log & Update Status",
+        "type": "n8n-nodes-base.postgres",
+        "typeVersion": 2.5,
+        "position": [
+          2640,
+          0
+        ],
+        "alwaysOutputData": true,
+        "credentials": {
+          "postgres": {
+            "id": "AlgoManPgCred0001",
+            "name": "AlgoMan Postgres"
+          }
+        },
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "-- 18a: log every alert; update the machine's status when it was identified.\r\n-- ACT -> fault, HOLD -> explained, ESCALATE -> watch. A later reading always replaces the status (that is how faults clear).\r\nWITH p AS (SELECT $1::jsonb AS j),\r\neq AS (SELECT e.equipment_id FROM equipment e, p WHERE e.equipment_id = p.j->>'equipment_id'),\r\nlog AS (\r\n  INSERT INTO alert_log (equipment_id, input_source, summary, decision, confidence, reason)\r\n  SELECT (SELECT equipment_id FROM eq), j->>'source', j->>'query', j->>'action', (j->>'confidence_score')::int, j->>'explanation' FROM p\r\n  RETURNING id\r\n)\r\nINSERT INTO equipment_status (equipment_id, status, reason, last_reading, updated_at)\r\nSELECT eq.equipment_id,\r\n       CASE p.j->>'action' WHEN 'ACT' THEN 'fault' WHEN 'HOLD' THEN 'explained' ELSE 'watch' END,\r\n       p.j->>'explanation',\r\n       jsonb_build_object('query', p.j->>'query', 'sensor_type', p.j->>'sensor_type', 'sensor_value', p.j->'sensor_value',\r\n                          'confidence', p.j->'confidence_score', 'alert_id', (SELECT id FROM log), 'at', now()),\r\n       now()\r\nFROM p, eq\r\nON CONFLICT (equipment_id) DO UPDATE\r\n  SET status = EXCLUDED.status, reason = EXCLUDED.reason, last_reading = EXCLUDED.last_reading, updated_at = EXCLUDED.updated_at\r\nRETURNING equipment_id, status;",
+          "options": {
+            "queryReplacement": "={{ [JSON.stringify($json)] }}"
+          }
+        }
+      },
+      {
+        "id": "9bad9e7e-3474-4f59-b7b7-f479426a491e",
+        "name": "19. Return Result",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          2860,
+          0
+        ],
+        "parameters": {
+          "jsCode": "// Node 19: Return the pipeline result (the sub-workflow returns the last node's output)\r\nconst result = $('17. Format Response').first().json;\r\nconst st = $('18a. Log & Update Status').first().json;\r\nreturn [{ json: { ...result, equipment_status: st.status || null } }];\r\n"
+        }
+      }
+    ],
+    "connections": {
+      "Pipeline Input": {
+        "main": [
+          [
+            {
+              "node": "9. Parse Intent",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "9. Parse Intent": {
+        "main": [
+          [
+            {
+              "node": "9b. Lookup Equipment",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "9b. Lookup Equipment": {
+        "main": [
+          [
+            {
+              "node": "10a. Embed Query",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "10a. Embed Query": {
+        "main": [
+          [
+            {
+              "node": "10b. Pinecone Query",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "10b. Pinecone Query": {
+        "main": [
+          [
+            {
+              "node": "11. BM25 Search",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "11. BM25 Search": {
+        "main": [
+          [
+            {
+              "node": "12. Merge Results",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "12. Merge Results": {
+        "main": [
+          [
+            {
+              "node": "13. Rerank",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "13. Rerank": {
+        "main": [
+          [
+            {
+              "node": "14. Validate",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "14. Validate": {
+        "main": [
+          [
+            {
+              "node": "14b. Route",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "14b. Route": {
+        "main": [
+          [
+            {
+              "node": "15. Build Prompt",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "15b. Template Response",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "15. Build Prompt": {
+        "main": [
+          [
+            {
+              "node": "16. Fireworks LLM",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "16. Fireworks LLM": {
+        "main": [
+          [
+            {
+              "node": "17. Format Response",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "15b. Template Response": {
+        "main": [
+          [
+            {
+              "node": "17. Format Response",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "17. Format Response": {
+        "main": [
+          [
+            {
+              "node": "18a. Log & Update Status",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "18a. Log & Update Status": {
+        "main": [
+          [
+            {
+              "node": "19. Return Result",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "settings": {
+      "executionOrder": "v1"
+    },
+    "staticData": null,
+    "meta": null,
+    "nodeGroups": [],
+    "pinData": {},
+    "versionId": "027aa618-47a7-4ccd-bde8-c327301574ae",
+    "activeVersionId": "027aa618-47a7-4ccd-bde8-c327301574ae",
+    "versionCounter": 3,
+    "triggerCount": 0,
+    "sourceWorkflowId": null,
+    "tags": [],
+    "shared": [
+      {
+        "updatedAt": "2026-10-16T19:32:25.653Z",
+        "createdAt": "2026-10-16T19:32:25.653Z",
+        "role": "workflow:owner",
+        "workflowId": "5c7a1f0e2d3b4a69",
+        "projectId": "YGpJMX276ekEPLnt",
+        "project": {
+          "updatedAt": "2026-10-16T12:40:45.454Z",
+          "createdAt": "2026-10-16T12:38:47.605Z",
+          "id": "YGpJMX276ekEPLnt",
+          "name": "Algo Shank <algoshank@gmail.com>",
+          "type": "personal",
+          "icon": null,
+          "description": null,
+          "customTelemetryTags": [],
+          "creatorId": "9c99fa53-6272-4c19-80f9-50f37bfe567d"
+        }
+      }
+    ],
+    "versionMetadata": {
+      "name": null,
+      "description": null
+    }
+  },
+  {
+    "updatedAt": "2026-10-16T19:38:51.000Z",
+    "createdAt": "2026-10-16T19:37:43.678Z",
+    "id": "6d8b2e1f3c4a5b70",
+    "name": "AlgoFactory - 6 Status Job",
+    "description": null,
+    "active": true,
+    "isArchived": false,
+    "nodes": [
+      {
+        "id": "d9e69baf-6a12-4a97-afe0-4be344cf81f6",
+        "name": "Every 15 Minutes",
+        "type": "n8n-nodes-base.scheduleTrigger",
+        "typeVersion": 1.2,
+        "position": [
+          0,
+          0
+        ],
+        "parameters": {
+          "rule": {
+            "interval": [
+              {
+                "field": "minutes",
+                "minutesInterval": 15
+              }
+            ]
+          }
+        }
+      },
+      {
+        "id": "255a439c-39c7-472c-97f7-2792d3949bde",
+        "name": "Run Now",
+        "type": "n8n-nodes-base.manualTrigger",
+        "typeVersion": 1,
+        "position": [
+          0,
+          180
+        ],
+        "parameters": {}
+      },
+      {
+        "id": "f0a5c505-2ab0-42b8-b7d6-047b3b928f77",
+        "name": "Active Schedule Windows",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          220,
+          0
+        ],
+        "parameters": {
+          "jsCode": "// Status job: which machines are inside a scheduled window right now (maintenance or cleaning)\n// Clock: PLANT_CLOCK env var (tests / demo, e.g. 2026-10-19T08:30) or the current time.\n\nconst fs = require('fs');\nconst schedules = JSON.parse(fs.readFileSync('/data/maintenance_schedule.json', 'utf8')).schedules || [];\nconst DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];\n\nlet day, hour;\nconst m = ($env.PLANT_CLOCK || '').match(/(\\d{4})-(\\d{2})-(\\d{2})[T ](\\d{2}):(\\d{2})/);\nif (m) { day = DAYS[new Date(Date.UTC(+m[1], +m[2] - 1, +m[3])).getUTCDay()]; hour = +m[4] + +m[5] / 60; }\nelse { day = $now.weekdayLong; hour = $now.hour + $now.minute / 60; }\n\nconst active = schedules.filter(s => {\n  const [h, mi] = (s.time || '00:00').split(':').map(Number);\n  const start = h + mi / 60;\n  return (!s.day_of_week || s.day_of_week === day) && hour >= start && hour < start + (s.duration_hours || 1);\n});\n\nreturn [{ json: {\n  clock: `${day} ${String(Math.floor(hour)).padStart(2, '0')}:${String(Math.round((hour % 1) * 60)).padStart(2, '0')}`,\n  active_ids: `{${[...new Set(active.map(s => s.equipment_id))].join(',')}}`,   // Postgres text[] literal\n  active: active.map(s => `${s.equipment_id} ${s.schedule_type} (${s.method})`)\n} }];\n"
+        }
+      },
+      {
+        "id": "38a84a10-b8d6-45fa-84fb-33265a51b840",
+        "name": "Apply Status Rules",
+        "type": "n8n-nodes-base.postgres",
+        "typeVersion": 2.5,
+        "position": [
+          440,
+          0
+        ],
+        "alwaysOutputData": true,
+        "credentials": {
+          "postgres": {
+            "id": "AlgoManPgCred0001",
+            "name": "AlgoMan Postgres"
+          }
+        },
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "-- Status job (every 15 min). Faults are never changed here: only a later reading or a dashboard reset clears them.\nWITH a AS (SELECT unnest($1::text[]) AS id),\nstart_m AS (\n  UPDATE equipment_status s SET status = 'maintenance', reason = 'Scheduled maintenance/cleaning window', updated_at = now()\n  WHERE s.equipment_id IN (SELECT id FROM a) AND s.status NOT IN ('fault', 'maintenance')\n  RETURNING s.equipment_id, 'to maintenance'::text AS change),\nend_m AS (\n  UPDATE equipment_status s SET status = 'normal', reason = 'Maintenance window ended', updated_at = now()\n  WHERE s.status = 'maintenance' AND s.equipment_id NOT IN (SELECT id FROM a)\n  RETURNING s.equipment_id, 'maintenance -> normal'::text),\nexpired AS (\n  UPDATE equipment_status s SET status = 'normal', reason = 'Explained alert expired after 3 hours', updated_at = now()\n  WHERE s.status = 'explained' AND s.updated_at < now() - interval '3 hours' AND s.equipment_id NOT IN (SELECT id FROM a)\n  RETURNING s.equipment_id, 'explained -> normal'::text)\nSELECT * FROM start_m UNION ALL SELECT * FROM end_m UNION ALL SELECT * FROM expired;\n",
+          "options": {
+            "queryReplacement": "={{ [$json.active_ids] }}"
+          }
+        }
+      }
+    ],
+    "connections": {
+      "Every 15 Minutes": {
+        "main": [
+          [
+            {
+              "node": "Active Schedule Windows",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Run Now": {
+        "main": [
+          [
+            {
+              "node": "Active Schedule Windows",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Active Schedule Windows": {
+        "main": [
+          [
+            {
+              "node": "Apply Status Rules",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "settings": {
+      "executionOrder": "v1"
+    },
+    "staticData": {
+      "node:Every 15 Minutes": {
+        "recurrenceRules": [
+          null
+        ],
+        "recurrenceRuleSignatures": [
+          null
+        ]
+      }
+    },
+    "meta": null,
+    "nodeGroups": [],
+    "pinData": {},
+    "versionId": "9b44d4f9-95ac-4a99-87b9-ce6fcf2878d0",
+    "activeVersionId": "9b44d4f9-95ac-4a99-87b9-ce6fcf2878d0",
+    "versionCounter": 2,
+    "triggerCount": 1,
+    "sourceWorkflowId": null,
+    "tags": [],
+    "shared": [
+      {
+        "updatedAt": "2026-10-16T19:37:43.682Z",
+        "createdAt": "2026-10-16T19:37:43.682Z",
+        "role": "workflow:owner",
+        "workflowId": "6d8b2e1f3c4a5b70",
+        "projectId": "YGpJMX276ekEPLnt",
+        "project": {
+          "updatedAt": "2026-10-16T12:40:45.454Z",
+          "createdAt": "2026-10-16T12:38:47.605Z",
+          "id": "YGpJMX276ekEPLnt",
+          "name": "Algo Shank <algoshank@gmail.com>",
+          "type": "personal",
+          "icon": null,
+          "description": null,
+          "customTelemetryTags": [],
+          "creatorId": "9c99fa53-6272-4c19-80f9-50f37bfe567d"
+        }
+      }
+    ],
+    "versionMetadata": {
+      "name": null,
+      "description": null
+    }
+  },
+  {
+    "updatedAt": "2026-10-16T21:31:08.000Z",
+    "createdAt": "2026-10-16T19:59:37.176Z",
+    "id": "4a9c3d2e1f0b5c68",
+    "name": "AlgoFactory - 4 Chat",
+    "description": null,
+    "active": true,
+    "isArchived": false,
+    "nodes": [
+      {
+        "id": "e9ed91ac-d1c5-4071-a2a9-d37e024383bc",
+        "name": "Worker Chat",
+        "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+        "typeVersion": 1.1,
+        "position": [
+          0,
+          0
+        ],
+        "webhookId": "a1f0c4e2-7b3d-4e5f-9a6b-1c2d3e4f5a6b",
+        "parameters": {
+          "public": true,
+          "mode": "hostedChat",
+          "initialMessages": "Hi! Tell me what you see on a machine, or ask: How are my machines doing?",
+          "options": {
+            "title": "AlgoFactory",
+            "subtitle": "Floor assistant",
+            "responseMode": "lastNode"
+          }
+        }
+      },
+      {
+        "id": "0f3024db-877d-4453-963c-fcebb27fae77",
+        "name": "AI Agent",
+        "type": "@n8n/n8n-nodes-langchain.agent",
+        "typeVersion": 2.2,
+        "position": [
+          300,
+          0
+        ],
+        "parameters": {
+          "promptType": "auto",
+          "options": {
+            "systemMessage": "You are AlgoFactory, the floor assistant for maintenance workers. Be short and plain. Never invent machines, readings or numbers.\r\n\r\nTOOLS\r\n- lookup_equipment: call it FIRST whenever the message mentions a machine or a symptom. Pass the machine words exactly as the worker wrote them (e.g. \"Pump 2\", \"Equipment-001\", \"compressor on Line 9\", \"motor\").\r\n  - Exactly 1 row: call check_alert with that equipment_id and the worker's message.\r\n  - Several rows: do NOT call check_alert. Ask \"Did you mean ...?\" listing the names with site and line (at most 8).\r\n  - 0 rows: do NOT call check_alert. Say you could not find that machine and ask for its name or ID. Never pick one yourself.\r\n- check_alert: runs the sensor, schedule, baseline and history checks. Use only what it returns.\r\n- get_equipment_status: for questions like \"How are my machines doing?\" or \"How is Austin?\". Pass \"all\", a site, state, region, line or machine. Report total and by_status exactly as returned (never count rows yourself), then list every machine in needs_attention with its status and reason.\r\n\r\nREPLY FORMAT after check_alert (use its \"action\", \"confidence_score\", \"explanation\" and \"response\" fields):\r\nDecision: ACT, HOLD or ESCALATE (Machine name)\r\nWhy: one sentence\r\nConfidence: N%\r\nNext step: one sentence a floor worker can act on\r\n",
+            "returnIntermediateSteps": true,
+            "maxIterations": 6
+          }
+        }
+      },
+      {
+        "id": "157c15a3-16a7-432e-9e1a-c6aae8a915d8",
+        "name": "Fireworks gpt-oss-120b",
+        "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+        "typeVersion": 1.2,
+        "position": [
+          0,
+          260
+        ],
+        "credentials": {
+          "openAiApi": {
+            "id": "no8OAWIhBkwnga5I",
+            "name": "OpenAI account"
+          }
+        },
+        "parameters": {
+          "model": {
+            "__rl": true,
+            "mode": "id",
+            "value": "accounts/fireworks/models/gpt-oss-120b"
+          },
+          "options": {
+            "temperature": 0
+          }
+        }
+      },
+      {
+        "id": "48401fac-51b3-48a6-8f9b-e08b5bc438fb",
+        "name": "Chat Memory",
+        "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+        "typeVersion": 1.3,
+        "position": [
+          160,
+          260
+        ],
+        "parameters": {
+          "contextWindowLength": 10
+        }
+      },
+      {
+        "id": "54771946-b9ae-4ab1-9364-0ee2af076115",
+        "name": "lookup_equipment",
+        "type": "n8n-nodes-base.postgresTool",
+        "typeVersion": 2.5,
+        "position": [
+          320,
+          260
+        ],
+        "credentials": {
+          "postgres": {
+            "id": "AlgoManPgCred0001",
+            "name": "AlgoMan Postgres"
+          }
+        },
+        "parameters": {
+          "descriptionType": "manual",
+          "toolDescription": "Find machines by name or ID. Input: the machine words exactly as the worker wrote them. Returns 0, 1 or several rows with equipment_id, name, type, site, line, status.",
+          "operation": "executeQuery",
+          "query": "SELECT * FROM lookup_equipment($1);",
+          "options": {
+            "queryReplacement": "={{ $fromAI('name_or_id', 'Machine name or ID as the worker wrote it, e.g. Pump 2, Equipment-001, motor', 'string') }}"
+          }
+        }
+      },
+      {
+        "id": "9006068d-6923-46da-8175-2eeedf2c0f31",
+        "name": "get_equipment_status",
+        "type": "n8n-nodes-base.postgresTool",
+        "typeVersion": 2.5,
+        "position": [
+          480,
+          260
+        ],
+        "credentials": {
+          "postgres": {
+            "id": "AlgoManPgCred0001",
+            "name": "AlgoMan Postgres"
+          }
+        },
+        "parameters": {
+          "descriptionType": "manual",
+          "toolDescription": "Status summary with exact counts. Input: all, a site (Austin, Columbus, Fremont, Denver, Minneapolis, Miami, Seattle), a state, region, line, or a machine. Returns total, by_status counts, and needs_attention (every machine not normal, with reason).",
+          "operation": "executeQuery",
+          "query": "SELECT * FROM get_status_summary($1);",
+          "options": {
+            "queryReplacement": "={{ $fromAI('scope', 'all, a site, state, region, line, or a machine name or ID', 'string') }}"
+          }
+        }
+      },
+      {
+        "id": "f4bce2d6-acb6-4aa9-a476-03704ef3df43",
+        "name": "check_alert",
+        "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+        "typeVersion": 2.2,
+        "position": [
+          640,
+          260
+        ],
+        "parameters": {
+          "description": "Run the AlgoFactory checks (evidence, sensors, schedule, baseline, history) for one identified machine. Call only after lookup_equipment returned exactly one row. Returns action (ACT/HOLD/ESCALATE), confidence_score, explanation and response.",
+          "workflowId": {
+            "__rl": true,
+            "value": "5c7a1f0e2d3b4a69",
+            "mode": "id"
+          },
+          "workflowInputs": {
+            "mappingMode": "defineBelow",
+            "value": {
+              "query": "={{ $fromAI('query', 'The worker message, verbatim', 'string') }}",
+              "equipment_id": "={{ $fromAI('equipment_id', 'equipment_id from lookup_equipment, e.g. Equipment-008', 'string') }}",
+              "timestamp": "",
+              "source": "chat"
+            },
+            "matchingColumns": [],
+            "schema": [
+              {
+                "id": "query",
+                "displayName": "query",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "canBeUsedToMatch": true,
+                "type": "any",
+                "removed": false
+              },
+              {
+                "id": "equipment_id",
+                "displayName": "equipment_id",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "canBeUsedToMatch": true,
+                "type": "any",
+                "removed": false
+              },
+              {
+                "id": "timestamp",
+                "displayName": "timestamp",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "canBeUsedToMatch": true,
+                "type": "any",
+                "removed": false
+              },
+              {
+                "id": "source",
+                "displayName": "source",
+                "required": false,
+                "defaultMatch": false,
+                "display": true,
+                "canBeUsedToMatch": true,
+                "type": "any",
+                "removed": false
+              }
+            ],
+            "attemptToConvertTypes": false,
+            "convertFieldsToString": false
+          }
+        }
+      }
+    ],
+    "connections": {
+      "Worker Chat": {
+        "main": [
+          [
+            {
+              "node": "AI Agent",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Fireworks gpt-oss-120b": {
+        "ai_languageModel": [
+          [
+            {
+              "node": "AI Agent",
+              "type": "ai_languageModel",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Chat Memory": {
+        "ai_memory": [
+          [
+            {
+              "node": "AI Agent",
+              "type": "ai_memory",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "lookup_equipment": {
+        "ai_tool": [
+          [
+            {
+              "node": "AI Agent",
+              "type": "ai_tool",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "get_equipment_status": {
+        "ai_tool": [
+          [
+            {
+              "node": "AI Agent",
+              "type": "ai_tool",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "check_alert": {
+        "ai_tool": [
+          [
+            {
+              "node": "AI Agent",
+              "type": "ai_tool",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "settings": {
+      "executionOrder": "v1"
+    },
+    "staticData": null,
+    "meta": null,
+    "nodeGroups": [],
+    "pinData": {},
+    "versionId": "ca19858e-50bf-4240-aceb-ff9dc1b7afb0",
+    "activeVersionId": "ca19858e-50bf-4240-aceb-ff9dc1b7afb0",
+    "versionCounter": 2,
+    "triggerCount": 1,
+    "sourceWorkflowId": null,
+    "tags": [],
+    "shared": [
+      {
+        "updatedAt": "2026-10-16T19:59:37.179Z",
+        "createdAt": "2026-10-16T19:59:37.179Z",
+        "role": "workflow:owner",
+        "workflowId": "4a9c3d2e1f0b5c68",
+        "projectId": "YGpJMX276ekEPLnt",
+        "project": {
+          "updatedAt": "2026-10-16T12:40:45.454Z",
+          "createdAt": "2026-10-16T12:38:47.605Z",
+          "id": "YGpJMX276ekEPLnt",
+          "name": "Algo Shank <algoshank@gmail.com>",
+          "type": "personal",
+          "icon": null,
+          "description": null,
+          "customTelemetryTags": [],
+          "creatorId": "9c99fa53-6272-4c19-80f9-50f37bfe567d"
+        }
+      }
+    ],
+    "versionMetadata": {
+      "name": null,
+      "description": null
+    }
+  },
+  {
+    "updatedAt": "2026-10-16T21:35:23.000Z",
+    "createdAt": "2026-10-16T20:17:14.381Z",
+    "id": "7e9c3f2a4b5d6e81",
+    "name": "AlgoFactory - 5 Floor API",
+    "description": null,
+    "active": true,
+    "isArchived": false,
+    "nodes": [
+      {
+        "id": "8d0dcedb-0222-43ba-913c-cff45c5cd112",
+        "name": "Dashboard: GET /floor",
+        "type": "n8n-nodes-base.webhook",
+        "typeVersion": 2,
+        "position": [
+          0,
+          0
+        ],
+        "webhookId": "3ac09162-0a47-455e-a317-3d68eee991fa",
+        "parameters": {
+          "httpMethod": "GET",
+          "path": "floor",
+          "responseMode": "responseNode",
+          "options": {}
+        }
+      },
+      {
+        "id": "09bec91b-59a5-4ac7-90ea-d01819ca2f2c",
+        "name": "Dashboard: Respond",
+        "type": "n8n-nodes-base.respondToWebhook",
+        "typeVersion": 1.1,
+        "position": [
+          240,
+          0
+        ],
+        "parameters": {
+          "respondWith": "text",
+          "responseBody": "<!doctype html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n<title>AlgoFactory Floor</title>\n<link rel=\"preconnect\" href=\"https://fonts.googleapis.com\">\n<link href=\"https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap\" rel=\"stylesheet\">\n<style>\n  :root {\n    --bg: #0f1218; --panel: #171b23; --panel-2: #1d222c; --line: #2a303c; --text: #e8ebf0; --muted: #8b93a3;\n    --normal: #3ecf8e; --watch: #f2b134; --fault: #ff5d5d; --explained: #5aa9ff; --maintenance: #a78bfa;\n    --accent: #f2b134;\n  }\n  * { box-sizing: border-box; }\n  body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.45 Inter, system-ui, sans-serif; }\n  button { font: inherit; cursor: pointer; }\n  .mono { font-family: 'JetBrains Mono', ui-monospace, monospace; }\n  .wrap { max-width: 1440px; margin: 0 auto; padding: 20px 16px 40px; }\n  header { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; margin-bottom: 18px; }\n  .brand { font-size: 22px; font-weight: 800; letter-spacing: -0.02em; }\n  .brand span { color: var(--accent); }\n  .sub { color: var(--muted); font-size: 13px; }\n  .spacer { flex: 1; }\n  .chips { display: flex; flex-wrap: wrap; gap: 6px; }\n  .chip { background: var(--panel); border: 1px solid var(--line); color: var(--text); border-radius: 999px; padding: 6px 12px; font-size: 13px; }\n  .chip.on { border-color: var(--accent); color: var(--accent); }\n  .tiles { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; margin-bottom: 18px; }\n  .tile { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; text-align: left; color: var(--text); border-top: 3px solid var(--c); }\n  .tile.on { outline: 2px solid var(--c); }\n  .tile .n { font-size: 28px; font-weight: 800; }\n  .tile .l { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .08em; }\n  /* Left: map, then alerts below it. Right: machine board, then chat and test alert. */\n  .grid { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 18px; align-items: start; }\n  .machines-panel { max-height: 600px; overflow-y: auto; }\n  .machines-panel .line-row { grid-template-columns: 52px minmax(0, 1fr); }\n  .machines-panel .cards { grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); }\n  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 14px; }\n  .panel h2 { margin: 0 0 10px; font-size: 13px; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); font-weight: 700; }\n  .site { margin-bottom: 18px; }\n  .site h3 { margin: 0 0 8px; font-size: 16px; }\n  .site h3 small { color: var(--muted); font-weight: 500; margin-left: 6px; }\n  .line-row { display: grid; grid-template-columns: 64px minmax(0, 1fr); gap: 10px; margin-bottom: 10px; }\n  .line-label { color: var(--muted); font-size: 12px; padding-top: 10px; }\n  .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 8px; }\n  .card { text-align: left; background: var(--panel-2); border: 1px solid var(--line); border-left: 4px solid var(--c); border-radius: 10px; padding: 10px 12px; color: var(--text); }\n  .card:hover { border-color: var(--c); }\n  .card .top { display: flex; justify-content: space-between; align-items: center; gap: 6px; }\n  .card .name { font-weight: 700; }\n  .card .id { color: var(--muted); font-size: 11px; }\n  .card .reason { color: var(--muted); font-size: 12px; margin-top: 6px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }\n  .badge { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--c); }\n  .badge::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: var(--c); }\n  .side { display: grid; gap: 18px; }\n  .presets { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 8px; }\n  .preset { background: var(--panel-2); border: 1px solid var(--line); color: var(--text); border-radius: 8px; padding: 8px; text-align: left; font-size: 12px; }\n  .preset b { display: block; font-size: 11px; color: var(--muted); font-weight: 600; }\n  .preset:hover { border-color: var(--accent); }\n  .preset.on { border-color: var(--accent); background: #2a2516; }\n  .preset:disabled { opacity: .6; cursor: wait; }\n  textarea { width: 100%; background: var(--bg); color: var(--text); border: 1px solid var(--line); border-radius: 8px; padding: 8px; font: 13px 'JetBrains Mono', monospace; resize: vertical; min-height: 44px; }\n  .send { width: 100%; margin-top: 8px; background: var(--accent); color: #1a1405; border: 0; border-radius: 8px; padding: 10px; font-weight: 800; }\n  .send:disabled { opacity: .6; cursor: wait; }\n  .result { margin-top: 10px; background: var(--panel-2); border: 1px solid var(--line); border-left: 4px solid var(--c); border-radius: 10px; padding: 10px 12px; font-size: 13px; }\n  .result .head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin-bottom: 6px; }\n  .result .act { font-size: 18px; font-weight: 800; color: var(--c); }\n  .result pre { white-space: pre-wrap; margin: 6px 0 0; font: 12px/1.5 'JetBrains Mono', monospace; color: var(--text); }\n  .alerts { max-height: 520px; overflow: auto; }\n  .alert { display: grid; grid-template-columns: 72px minmax(0, 1fr) auto; gap: 8px; padding: 8px 0; border-bottom: 1px solid var(--line); font-size: 13px; }\n  .alert .t { white-space: nowrap; }\n  .alert .s { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }\n  .alert .dec { white-space: nowrap; }\n  .alert:last-child { border-bottom: 0; }\n  .alert .t { color: var(--muted); font-size: 12px; }\n  .alert .s { color: var(--muted); font-size: 12px; }\n  .dec { font-weight: 800; font-size: 12px; color: var(--c); }\n  .empty { color: var(--muted); padding: 10px 0; }\n  .err { color: var(--fault); margin: 0 0 12px; }\n  .overlay { position: fixed; inset: 0; background: rgba(0,0,0,.55); display: flex; justify-content: flex-end; z-index: 10; }\n  .drawer { width: min(460px, 100%); height: 100%; overflow: auto; background: var(--panel); border-left: 1px solid var(--line); padding: 18px; }\n  .drawer h3 { margin: 0; font-size: 20px; }\n  .kv { display: grid; grid-template-columns: 120px 1fr; gap: 4px 10px; margin: 12px 0; font-size: 13px; }\n  .kv div:nth-child(odd) { color: var(--muted); }\n  .row-btns { display: flex; gap: 8px; margin: 10px 0 16px; }\n  .btn { background: var(--panel-2); border: 1px solid var(--line); color: var(--text); border-radius: 8px; padding: 8px 12px; }\n  .btn.danger { border-color: var(--fault); color: var(--fault); }\n  .chat-log { height: 340px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; padding: 2px 2px 8px; }\n  .msg { max-width: 88%; padding: 8px 11px; border-radius: 12px; font-size: 13px; line-height: 1.45; white-space: pre-wrap; word-wrap: break-word; }\n  .msg.user { align-self: flex-end; background: #2b3242; border-bottom-right-radius: 4px; }\n  .msg.bot { align-self: flex-start; background: var(--panel-2); border: 1px solid var(--line); border-bottom-left-radius: 4px; }\n  .msg.bot.err { border-color: var(--fault); color: var(--fault); }\n  .msg .tools { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }\n  .msg .tool { font: 11px 'JetBrains Mono', monospace; color: var(--muted); background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 1px 6px; }\n  .msg .meta { font-size: 11px; color: var(--muted); margin-top: 4px; }\n  .typing { align-self: flex-start; color: var(--muted); font-size: 12px; padding: 4px 2px; }\n  .suggest { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0 8px; }\n  .suggest button { background: var(--bg); border: 1px solid var(--line); color: var(--text); border-radius: 999px; padding: 4px 10px; font-size: 12px; }\n  .chat-input { display: flex; gap: 6px; }\n  .chat-input input { flex: 1; min-width: 0; background: var(--bg); color: var(--text); border: 1px solid var(--line); border-radius: 8px; padding: 9px 10px; font: inherit; }\n  .chat-input button { background: var(--accent); color: #1a1405; border: 0; border-radius: 8px; padding: 0 14px; font-weight: 800; }\n  .chat-input button:disabled { opacity: .6; cursor: wait; }\n  .map-panel { margin-bottom: 0; }\n  .map-wrap { position: relative; }\n  .map-wrap svg { width: 100%; height: auto; display: block; }\n  .state { fill: #1f2530; stroke: #313847; stroke-width: 0.8; }\n  .state.has-site { fill: #262d3a; }\n  .nation { fill: none; stroke: #3a4252; stroke-width: 1.2; }\n  .site-marker { cursor: pointer; }\n  .site-marker .halo { fill: var(--c); opacity: .18; }\n  .site-marker.fault .halo { animation: pulse 1.6s ease-out infinite; transform-box: fill-box; transform-origin: center; }\n  .site-marker .dot { fill: var(--c); stroke: var(--bg); stroke-width: 2; }\n  .site-marker.on .dot { stroke: var(--text); stroke-width: 3; }\n  .map-wrap svg { max-width: 860px; margin: 0 auto; }\n  .site-marker text { fill: var(--text); font: 600 15px Inter, sans-serif; paint-order: stroke; stroke: var(--bg); stroke-width: 3px; }\n  .site-marker text.small { fill: var(--muted); font-weight: 500; font-size: 12px; }\n  .site-marker.fault text.small, .site-marker.watch text.small { fill: var(--c); }\n  @keyframes pulse { from { transform: scale(.6); opacity: .45; } to { transform: scale(1.6); opacity: 0; } }\n  .map-legend { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 6px; }\n  @media (max-width: 1100px) { .grid { grid-template-columns: 1fr; } }\n  @media (max-width: 640px) { .tiles { grid-template-columns: repeat(3, minmax(0, 1fr)); } .line-row { grid-template-columns: 1fr; } .line-label { padding-top: 0; } .presets { grid-template-columns: 1fr; } }\n</style>\n</head>\n<body>\n<div id=\"root\"></div>\n<script src=\"https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js\"></script>\n<script src=\"https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js\"></script>\n<script src=\"https://unpkg.com/htm@3.1.1/dist/htm.umd.js\"></script>\n<script src=\"https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js\"></script>\n<script src=\"https://cdnjs.cloudflare.com/ajax/libs/topojson/3.0.2/topojson.min.js\"></script>\n<script>\n// AlgoFactory floor dashboard. Data comes from the n8n \"AlgoFactory - 5 Floor API\" workflow on the same origin.\nconst { useState, useEffect, useCallback, useMemo } = React;\nconst html = htm.bind(React.createElement);\nconst API = '/webhook';\nconst STATUSES = ['normal', 'watch', 'fault', 'explained', 'maintenance'];\nconst COLOR = { normal: 'var(--normal)', watch: 'var(--watch)', fault: 'var(--fault)', explained: 'var(--explained)', maintenance: 'var(--maintenance)' };\nconst DECISION_COLOR = { ACT: 'var(--fault)', ESCALATE: 'var(--watch)', HOLD: 'var(--explained)', RESET: 'var(--normal)' };\nconst PRESETS = [\n  { label: 'Thermal overload', hint: 'expect ACT', query: 'Equipment-001 TH-001 temp 85°C' },\n  { label: 'Humidity after cleaning', hint: 'expect HOLD', query: 'Equipment-001 humidity 75%' },\n  { label: 'Compressor vibration', hint: 'expect ACT', query: 'Equipment-005 VB-001 vibration 8 mm/s' },\n  { label: 'Vague noise on Pump 2', hint: 'expect ESCALATE', query: 'Equipment-008 weird noise' },\n];\n\nconst getJson = async (path, opts) => {\n  const r = await fetch(API + path, opts);\n  if (!r.ok) throw new Error(`${path}: HTTP ${r.status}`);\n  return r.json();\n};\nconst time = ts => new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });\nconst ago = ts => { const m = Math.round((Date.now() - new Date(ts)) / 60000); return m < 1 ? 'just now' : m < 60 ? `${m} min ago` : `${Math.round(m / 60)} h ago`; };\nconst reading = r => r && r.sensor_value != null ? `${r.sensor_type || 'reading'} ${r.sensor_value}` : '';\n\nfunction Badge({ status }) {\n  return html`<span class=\"badge\" style=${{ '--c': COLOR[status] }}>${status}</span>`;\n}\n\n// Plant locations (site-level reference data; equipment rows carry the site name)\n// label: which side of the dot the text goes; dy nudges it to avoid neighbours (Columbus / DC sit close together)\nconst SITE_COORDS = {\n  'Seattle Plant':       { lon: -122.33, lat: 47.61, city: 'Seattle, WA',    label: 'right', dy: 0 },\n  'Fremont Plant':       { lon: -121.99, lat: 37.55, city: 'Fremont, CA',    label: 'right', dy: 0 },\n  'Minneapolis Plant':   { lon: -93.27,  lat: 44.98, city: 'Minneapolis, MN', label: 'right', dy: 0 },\n  'Austin Plant':        { lon: -97.74,  lat: 30.27, city: 'Austin, TX',     label: 'right', dy: 0 },\n  'Denver Plant':        { lon: -104.99, lat: 39.74, city: 'Denver, CO',     label: 'right', dy: 0 },\n  'Columbus Plant':      { lon: -83.00,  lat: 39.96, city: 'Columbus, OH',   label: 'right', dy: 0 },\n  'Miami Plant':         { lon: -80.19,  lat: 25.76, city: 'Miami, FL',      label: 'left',  dy: 0 },\n};\nconst SEVERITY = ['fault', 'watch', 'maintenance', 'explained', 'normal'];\nconst MAP_W = 975, MAP_H = 610;\nconst ATLAS = 'https://cdn.jsdelivr.net/npm/us-atlas@3.0.1/states-albers-10m.json';   // already projected to 975x610 (Albers USA)\n\nfunction UsMap({ equipment, site, onSite }) {\n  const [shapes, setShapes] = useState(null);\n  const [err, setErr] = useState('');\n  useEffect(() => {\n    fetch(ATLAS).then(r => r.json()).then(us => {\n      const path = d3.geoPath();\n      setShapes({\n        states: topojson.feature(us, us.objects.states).features.map(f => ({ name: f.properties.name, d: path(f) })),\n        nation: path(topojson.mesh(us, us.objects.nation))\n      });\n    }).catch(e => setErr(e.message));\n  }, []);\n  // Same Albers USA projection the atlas was built with\n  const projection = useMemo(() => d3.geoAlbersUsa().scale(1300).translate([487.5, 305]), []);\n  const sites = Object.entries(SITE_COORDS).map(([name, c]) => {\n    const ms = equipment.filter(m => m.site === name);\n    const worst = SEVERITY.find(s => ms.some(m => m.status === s)) || 'normal';\n    const issues = ms.filter(m => m.status === 'fault' || m.status === 'watch').length;\n    const [x, y] = projection([c.lon, c.lat]) || [0, 0];\n    return { name, ...c, x, y, count: ms.length, worst, issues };\n  });\n  const siteStates = new Set(['Texas', 'Ohio', 'California', 'Minnesota', 'Florida', 'Colorado', 'Washington']);\n  return html`\n    <div class=\"panel map-panel\">\n      <h2>Plants</h2>\n      ${err && html`<div class=\"err\">Map unavailable (${err})</div>`}\n      <div class=\"map-wrap\">\n        <svg viewBox=${`0 0 ${MAP_W} ${MAP_H}`} role=\"img\" aria-label=\"Map of AlgoFactory plants in the United States\">\n          ${shapes && shapes.states.map(s => html`<path key=${s.name} class=${'state' + (siteStates.has(s.name) ? ' has-site' : '')} d=${s.d}><title>${s.name}</title></path>`)}\n          ${shapes && html`<path class=\"nation\" d=${shapes.nation} />`}\n          ${sites.map(s => {\n            const r = 6 + s.count * 0.8;\n            const right = s.label !== 'left';\n            return html`\n              <g key=${s.name} class=${'site-marker ' + s.worst + (site === s.name ? ' on' : '')} style=${{ '--c': COLOR[s.worst] }}\n                 transform=${`translate(${s.x},${s.y})`} onClick=${() => onSite(site === s.name ? 'All' : s.name)}>\n                <title>${s.name}: ${s.count} machines, worst status ${s.worst}</title>\n                <circle class=\"halo\" r=${r * 2} />\n                <circle class=\"dot\" r=${r} />\n                <text x=${right ? r + 6 : -(r + 6)} y=${s.dy - 1} text-anchor=${right ? 'start' : 'end'}>${s.city}</text>\n                <text class=\"small\" x=${right ? r + 6 : -(r + 6)} y=${s.dy + 13} text-anchor=${right ? 'start' : 'end'}>${s.issues ? `${s.issues} need attention` : `${s.count} machines`}</text>\n              </g>`;\n          })}\n        </svg>\n      </div>\n      <div class=\"map-legend sub\">${SEVERITY.map(s => html`<span key=${s}><${Badge} status=${s} /></span>`)}<span>Dot color = worst status at the plant · click a plant to filter</span></div>\n    </div>`;\n}\n\nfunction MachineCard({ m, onOpen }) {\n  return html`\n    <button class=\"card\" style=${{ '--c': COLOR[m.status] }} onClick=${() => onOpen(m.equipment_id)}>\n      <div class=\"top\"><span class=\"name\">${m.name}</span><${Badge} status=${m.status} /></div>\n      <div class=\"id mono\">${m.equipment_id} · ${m.type}${m.alerts_today ? ` · ${m.alerts_today} alert${m.alerts_today > 1 ? 's' : ''} today` : ''}</div>\n      ${m.status !== 'normal' && html`<div class=\"reason\">${reading(m.last_reading) ? reading(m.last_reading) + ' · ' : ''}${m.reason || ''}</div>`}\n    </button>`;\n}\n\nfunction TestAlert({ onDone }) {\n  const [query, setQuery] = useState('');          // custom text only; presets send themselves\n  const [busy, setBusy] = useState(false);\n  const [res, setRes] = useState(null);\n  const send = async (text, label) => {\n    setBusy(true); setRes(null);\n    try {\n      const t0 = performance.now();\n      const o = await getJson('/anomaly-check', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ query: text, source: 'dashboard' }) });\n      setRes({ ...o, sent: text, label, wall: ((performance.now() - t0) / 1000).toFixed(1) });\n      onDone();\n    } catch (e) { setRes({ error: e.message }); }\n    setBusy(false);\n  };\n  const c = res && DECISION_COLOR[res.action];\n  return html`\n    <div class=\"panel\">\n      <h2>Send test alert</h2>\n      <div class=\"sub\" style=${{ marginBottom: '8px' }}>One click sends the alert through Stations 1-4.</div>\n      <div class=\"presets\">\n        ${PRESETS.map(p => html`<button class=${'preset' + (res && res.label === p.label ? ' on' : '')} key=${p.label} disabled=${busy} onClick=${() => send(p.query, p.label)}><b>${p.hint}</b>${p.label}</button>`)}\n      </div>\n      <textarea value=${query} onInput=${e => setQuery(e.target.value)} placeholder=\"Or type your own, e.g. Equipment-013 TH-002 temp 99°C\" aria-label=\"Alert text\"></textarea>\n      <button class=\"send\" disabled=${busy || !query.trim()} onClick=${() => send(query.trim(), null)}>${busy ? 'Running Stations 1-4…' : 'Send custom alert'}</button>\n      ${res && (res.error\n        ? html`<div class=\"result\" style=${{ '--c': 'var(--fault)' }}>${res.error}</div>`\n        : html`<div class=\"result\" style=${{ '--c': c }}>\n            <div class=\"sub mono\" style=${{ marginBottom: '6px' }}>Sent: ${res.sent}</div>\n            <div class=\"head\"><span class=\"act\">${res.action}</span><span class=\"sub\">${res.confidence_score}% · ${res.wall}s · ${res.equipment_name || 'no machine'}</span></div>\n            <div class=\"sub\">${res.explanation}</div>\n            <pre>${res.response}</pre>\n          </div>`)}\n    </div>`;\n}\n\n// Worker chat: posts to the n8n \"AlgoFactory - 4 Chat\" workflow (Chat Trigger -> AI Agent -> tools -> pipeline)\nconst CHAT_URL = '/webhook/a1f0c4e2-7b3d-4e5f-9a6b-1c2d3e4f5a6b/chat';\nconst CHAT_SUGGESTIONS = ['How are my machines doing?', 'Equipment-001 humidity is 75%, should I worry?', 'Weird noise on Pump 2', 'Motor running hot'];\n\n// Minimal, safe formatting for agent replies: **bold** and \"- \" bullets (text is never injected as HTML)\nfunction FormattedText({ text }) {\n  return html`${text.split('\\n').map((line, i) => {\n    const bullet = /^\\s*[-*]\\s+/.test(line);\n    const parts = line.replace(/^\\s*[-*]\\s+/, '').split(/\\*\\*(.+?)\\*\\*/g)\n      .map((p, j) => j % 2 ? html`<b key=${j}>${p}</b>` : p);\n    return html`<div key=${i}>${bullet ? '• ' : ''}${parts}</div>`;\n  })}`;\n}\n\nfunction Chat({ onActivity }) {\n  const [sessionId] = useState(() => 'dash-' + Math.random().toString(36).slice(2, 10));\n  const [msgs, setMsgs] = useState([{ role: 'bot', text: 'Hi! Tell me what you see on a machine, or ask: How are my machines doing?' }]);\n  const [input, setInput] = useState('');\n  const [busy, setBusy] = useState(false);\n  const logRef = React.useRef(null);\n  useEffect(() => { if (logRef.current) logRef.current.scrollTop = logRef.current.scrollHeight; }, [msgs, busy]);\n\n  const send = async text => {\n    const q = (text ?? input).trim();\n    if (!q || busy) return;\n    setInput(''); setBusy(true);\n    setMsgs(m => [...m, { role: 'user', text: q }]);\n    const t0 = performance.now();\n    try {\n      const o = await getJson(CHAT_URL.replace('/webhook', ''), { method: 'POST', headers: { 'Content-Type': 'application/json' },\n        body: JSON.stringify({ action: 'sendMessage', sessionId, chatInput: q }) });\n      const tools = (o.intermediateSteps || []).map(s => `${s.action.tool}(${Object.values(s.action.toolInput || {}).join(', ')})`);\n      setMsgs(m => [...m, { role: 'bot', text: o.output || '(no reply)', tools, sec: ((performance.now() - t0) / 1000).toFixed(1) }]);\n      if (tools.some(t => t.startsWith('check_alert'))) onActivity();   // a check can change a machine's status\n    } catch (e) {\n      setMsgs(m => [...m, { role: 'bot', err: true, text: `Could not reach the assistant (${e.message}).` }]);\n    }\n    setBusy(false);\n  };\n\n  return html`\n    <div class=\"panel\">\n      <h2>Ask AlgoFactory</h2>\n      <div class=\"chat-log\" ref=${logRef} aria-live=\"polite\">\n        ${msgs.map((m, i) => html`\n          <div key=${i} class=${'msg ' + m.role + (m.err ? ' err' : '')}>\n            ${m.role === 'bot' ? html`<${FormattedText} text=${m.text} />` : m.text}\n            ${m.tools && m.tools.length > 0 && html`<div class=\"tools\">${m.tools.map((t, j) => html`<span class=\"tool\" key=${j}>${t}</span>`)}</div>`}\n            ${m.sec && html`<div class=\"meta\">${m.sec}s · n8n AI Agent</div>`}\n          </div>`)}\n        ${busy && html`<div class=\"typing\">AlgoFactory is checking…</div>`}\n      </div>\n      ${msgs.length <= 1 && html`<div class=\"suggest\">${CHAT_SUGGESTIONS.map(s => html`<button key=${s} onClick=${() => send(s)}>${s}</button>`)}</div>`}\n      <form class=\"chat-input\" onSubmit=${e => { e.preventDefault(); send(); }}>\n        <input value=${input} onInput=${e => setInput(e.target.value)} placeholder=\"e.g. Weird noise on Pump 2\" aria-label=\"Message the assistant\" />\n        <button type=\"submit\" disabled=${busy || !input.trim()}>Send</button>\n      </form>\n    </div>`;\n}\n\nfunction AlertsToday({ alerts, onOpen }) {\n  return html`\n    <div class=\"panel\">\n      <h2>Alerts today (${alerts.length})</h2>\n      <div class=\"alerts\">\n        ${alerts.length === 0 && html`<div class=\"empty\">No alerts yet today.</div>`}\n        ${alerts.map(a => html`\n          <div class=\"alert\" key=${a.id}>\n            <div class=\"t mono\">${time(a.created_at)}</div>\n            <div>\n              <div><a href=\"#\" style=${{ color: 'inherit' }} onClick=${e => { e.preventDefault(); a.equipment_id && onOpen(a.equipment_id); }}>${a.name || 'Unidentified'}</a> <span class=\"s\">· ${a.input_source}</span></div>\n              <div class=\"s\">${a.reason || a.summary}</div>\n            </div>\n            <div class=\"dec\" style=${{ '--c': DECISION_COLOR[a.decision] }}>${a.decision}${a.confidence != null ? ` ${a.confidence}%` : ''}</div>\n          </div>`)}\n      </div>\n    </div>`;\n}\n\nfunction History({ id, onClose, onChanged }) {\n  const [h, setH] = useState(null);\n  const [err, setErr] = useState('');\n  const load = useCallback(() => getJson(`/floor/history?equipment_id=${encodeURIComponent(id)}&hours=24`).then(setH).catch(e => setErr(e.message)), [id]);\n  useEffect(() => { load(); }, [load]);\n  const reset = async () => {\n    await getJson('/floor/reset', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ equipment_id: id }) });\n    await load(); onChanged();\n  };\n  return html`\n    <div class=\"overlay\" onClick=${onClose}>\n      <aside class=\"drawer\" onClick=${e => e.stopPropagation()}>\n        ${err && html`<p class=\"err\">${err}</p>`}\n        ${!h ? html`<div class=\"empty\">Loading…</div>` : html`\n          <div class=\"top\" style=${{ display: 'flex', justifyContent: 'space-between' }}><h3>${h.name}</h3><button class=\"btn\" onClick=${onClose}>Close</button></div>\n          <div class=\"sub mono\">${h.equipment_id} · ${h.type} · ${h.site}, ${h.line}</div>\n          <div class=\"kv\">\n            <div>Status</div><div><${Badge} status=${h.status} /></div>\n            <div>Reason</div><div>${h.reason || '-'}</div>\n            <div>Last reading</div><div>${reading(h.last_reading) || '-'}</div>\n            <div>Updated</div><div>${ago(h.updated_at)}</div>\n            <div>Limits</div><div>${h.max_temp_c}°C · ${h.max_vibration_mm_s} mm/s</div>\n          </div>\n          ${h.status !== 'normal' && html`<div class=\"row-btns\"><button class=\"btn danger\" onClick=${reset}>Reset to normal</button></div>`}\n          <h2 style=${{ fontSize: '12px', color: 'var(--muted)', letterSpacing: '.1em', textTransform: 'uppercase' }}>Last ${h.hours} hours (${h.alerts.length})</h2>\n          ${h.alerts.length === 0 && html`<div class=\"empty\">No alerts in this window.</div>`}\n          ${h.alerts.map(a => html`\n            <div class=\"alert\" key=${a.id}>\n              <div class=\"t mono\">${time(a.created_at)}</div>\n              <div><div>${a.summary}</div><div class=\"s\">${a.input_source} · ${a.reason}</div></div>\n              <div class=\"dec\" style=${{ '--c': DECISION_COLOR[a.decision] }}>${a.decision}${a.confidence != null ? ` ${a.confidence}%` : ''}</div>\n            </div>`)}\n        `}\n      </aside>\n    </div>`;\n}\n\nfunction App() {\n  const [equipment, setEquipment] = useState([]);\n  const [alerts, setAlerts] = useState([]);\n  const [site, setSite] = useState('All');\n  const [statusFilter, setStatusFilter] = useState(null);\n  const [open, setOpen] = useState(null);\n  const [updated, setUpdated] = useState(null);\n  const [err, setErr] = useState('');\n\n  const refresh = useCallback(async () => {\n    try {\n      const [e, a] = await Promise.all([getJson('/floor/equipment'), getJson('/floor/alerts?date=today')]);\n      setEquipment(e.equipment || []); setAlerts(a.alerts || []); setUpdated(new Date()); setErr('');\n    } catch (e) { setErr(`Could not reach the Floor API (${e.message}). Is n8n running?`); }\n  }, []);\n  useEffect(() => { refresh(); const t = setInterval(refresh, 15000); return () => clearInterval(t); }, [refresh]);\n\n  const sites = useMemo(() => ['All', ...new Set(equipment.map(m => m.site))], [equipment]);\n  const inSite = equipment.filter(m => site === 'All' || m.site === site);\n  const shown = inSite.filter(m => !statusFilter || m.status === statusFilter);\n  const counts = Object.fromEntries(STATUSES.map(s => [s, inSite.filter(m => m.status === s).length]));\n  const bySite = shown.reduce((acc, m) => { ((acc[m.site] ||= {})[m.line] ||= []).push(m); return acc; }, {});\n\n  return html`\n    <div class=\"wrap\">\n      <header>\n        <div><div class=\"brand\">Algo<span>Factory</span> Floor</div><div class=\"sub\">Every alert rides the same line. Only real faults reach the floor.</div></div>\n        <div class=\"spacer\"></div>\n        <div class=\"chips\">${sites.map(s => html`<button key=${s} class=${'chip' + (s === site ? ' on' : '')} onClick=${() => setSite(s)}>${s}</button>`)}</div>\n        <div class=\"sub mono\">${updated ? `Updated ${time(updated)} · auto every 15 s` : 'Loading…'}</div>\n      </header>\n      ${err && html`<p class=\"err\">${err}</p>`}\n      <div class=\"tiles\">\n        ${STATUSES.map(s => html`\n          <button key=${s} class=${'tile' + (statusFilter === s ? ' on' : '')} style=${{ '--c': COLOR[s] }} onClick=${() => setStatusFilter(statusFilter === s ? null : s)}>\n            <div class=\"n\">${counts[s]}</div><div class=\"l\">${s}</div>\n          </button>`)}\n      </div>\n      <div class=\"grid\">\n        <div class=\"side\">\n          <${UsMap} equipment=${equipment} site=${site} onSite=${setSite} />\n          <${AlertsToday} alerts=${alerts} onOpen=${setOpen} />\n        </div>\n        <div class=\"side\">\n        <div class=\"panel machines-panel\">\n          <h2>Machines${statusFilter ? ` · ${statusFilter}` : ''} (${shown.length})</h2>\n          ${shown.length === 0 && html`<div class=\"empty\">No machines match this filter.</div>`}\n          ${Object.entries(bySite).map(([s, lines]) => html`\n            <section class=\"site\" key=${s}>\n              <h3>${s}<small>${equipment.find(m => m.site === s)?.state}</small></h3>\n              ${Object.entries(lines).map(([ln, ms]) => html`\n                <div class=\"line-row\" key=${ln}>\n                  <div class=\"line-label\">${ln}</div>\n                  <div class=\"cards\">${ms.map(m => html`<${MachineCard} key=${m.equipment_id} m=${m} onOpen=${setOpen} />`)}</div>\n                </div>`)}\n            </section>`)}\n        </div>\n          <${Chat} onActivity=${refresh} />\n          <${TestAlert} onDone=${refresh} />\n        </div>\n      </div>\n      ${open && html`<${History} id=${open} onClose=${() => setOpen(null)} onChanged=${refresh} />`}\n    </div>`;\n}\n\nReactDOM.createRoot(document.getElementById('root')).render(html`<${App} />`);\n</script>\n</body>\n</html>\n",
+          "options": {
+            "responseHeaders": {
+              "entries": [
+                {
+                  "name": "Content-Type",
+                  "value": "text/html; charset=utf-8"
+                },
+                {
+                  "name": "Cache-Control",
+                  "value": "no-store"
+                }
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": "ef6ece7a-301b-471e-ad75-e0e9b853e7b9",
+        "name": "Equipment: GET /floor/equipment",
+        "type": "n8n-nodes-base.webhook",
+        "typeVersion": 2,
+        "position": [
+          0,
+          180
+        ],
+        "webhookId": "9ae62e97-6b84-4a80-856f-a6576e4d3112",
+        "parameters": {
+          "httpMethod": "GET",
+          "path": "floor/equipment",
+          "responseMode": "responseNode",
+          "options": {}
+        }
+      },
+      {
+        "id": "b3d1bfd1-2624-4645-8d73-c947fa6566e9",
+        "name": "Equipment: Query",
+        "type": "n8n-nodes-base.postgres",
+        "typeVersion": 2.5,
+        "position": [
+          240,
+          180
+        ],
+        "alwaysOutputData": true,
+        "credentials": {
+          "postgres": {
+            "id": "AlgoManPgCred0001",
+            "name": "AlgoMan Postgres"
+          }
+        },
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "\nSELECT coalesce(json_agg(r ORDER BY r.site, r.line, r.name), '[]') AS equipment\nFROM (\n  SELECT e.equipment_id, e.name, e.type, e.site, e.state, e.region, e.line, e.location,\n         e.max_temp_c, e.max_vibration_mm_s, e.bearing_type,\n         s.status, s.reason, s.last_reading, s.updated_at,\n         (SELECT count(*) FROM alert_log a\n           WHERE a.equipment_id = e.equipment_id\n             AND (a.created_at AT TIME ZONE 'America/Los_Angeles')::date = (now() AT TIME ZONE 'America/Los_Angeles')::date)::int AS alerts_today\n  FROM equipment e JOIN equipment_status s USING (equipment_id)\n) r;",
+          "options": {}
+        }
+      },
+      {
+        "id": "1d7c545b-13c8-402c-b446-819e991eae51",
+        "name": "Equipment: Respond",
+        "type": "n8n-nodes-base.respondToWebhook",
+        "typeVersion": 1.1,
+        "position": [
+          480,
+          180
+        ],
+        "parameters": {
+          "respondWith": "firstIncomingItem",
+          "options": {
+            "responseHeaders": {
+              "entries": [
+                {
+                  "name": "Cache-Control",
+                  "value": "no-store"
+                }
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": "92ade3b1-3037-45ad-b018-c92f90181896",
+        "name": "Alerts: GET /floor/alerts",
+        "type": "n8n-nodes-base.webhook",
+        "typeVersion": 2,
+        "position": [
+          0,
+          360
+        ],
+        "webhookId": "6c9db103-b378-44bb-b0c4-9b11a1bdc1a0",
+        "parameters": {
+          "httpMethod": "GET",
+          "path": "floor/alerts",
+          "responseMode": "responseNode",
+          "options": {}
+        }
+      },
+      {
+        "id": "f15b2272-8f4d-40b8-8508-3c6d63e42496",
+        "name": "Alerts: Query",
+        "type": "n8n-nodes-base.postgres",
+        "typeVersion": 2.5,
+        "position": [
+          240,
+          360
+        ],
+        "alwaysOutputData": true,
+        "credentials": {
+          "postgres": {
+            "id": "AlgoManPgCred0001",
+            "name": "AlgoMan Postgres"
+          }
+        },
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "\nWITH d AS (SELECT CASE WHEN $1 = 'today' THEN (now() AT TIME ZONE 'America/Los_Angeles')::date ELSE $1::date END AS day)\nSELECT (SELECT day FROM d)::text AS date, coalesce(json_agg(r ORDER BY r.created_at DESC), '[]') AS alerts\nFROM (\n  SELECT a.id, a.created_at, a.equipment_id, e.name, e.site, e.line, a.input_source, a.summary,\n         a.decision, a.confidence, a.reason\n  FROM alert_log a LEFT JOIN equipment e USING (equipment_id), d\n  WHERE (a.created_at AT TIME ZONE 'America/Los_Angeles')::date = d.day\n) r;",
+          "options": {
+            "queryReplacement": "={{ [$json.query.date || 'today'] }}"
+          }
+        }
+      },
+      {
+        "id": "dde8c989-fb17-49d1-bbe0-4171555ca5ad",
+        "name": "Alerts: Respond",
+        "type": "n8n-nodes-base.respondToWebhook",
+        "typeVersion": 1.1,
+        "position": [
+          480,
+          360
+        ],
+        "parameters": {
+          "respondWith": "firstIncomingItem",
+          "options": {
+            "responseHeaders": {
+              "entries": [
+                {
+                  "name": "Cache-Control",
+                  "value": "no-store"
+                }
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": "62107661-1979-4622-894a-8d1cff14a7b9",
+        "name": "History: GET /floor/history",
+        "type": "n8n-nodes-base.webhook",
+        "typeVersion": 2,
+        "position": [
+          0,
+          540
+        ],
+        "webhookId": "df5f7a1a-acd8-485d-accd-d089f19ce1c8",
+        "parameters": {
+          "httpMethod": "GET",
+          "path": "floor/history",
+          "responseMode": "responseNode",
+          "options": {}
+        }
+      },
+      {
+        "id": "a482b181-26d6-4107-bac5-e7c83733c9e8",
+        "name": "History: Query",
+        "type": "n8n-nodes-base.postgres",
+        "typeVersion": 2.5,
+        "position": [
+          240,
+          540
+        ],
+        "alwaysOutputData": true,
+        "credentials": {
+          "postgres": {
+            "id": "AlgoManPgCred0001",
+            "name": "AlgoMan Postgres"
+          }
+        },
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "\nSELECT e.equipment_id, e.name, e.type, e.site, e.line, e.location, e.max_temp_c, e.max_vibration_mm_s,\n       s.status, s.reason, s.last_reading, s.updated_at, $2::int AS hours,\n       coalesce((SELECT json_agg(x ORDER BY x.created_at DESC) FROM (\n          SELECT id, created_at, input_source, summary, decision, confidence, reason\n          FROM alert_log WHERE equipment_id = $1 AND created_at >= now() - make_interval(hours => $2::int)) x), '[]') AS alerts\nFROM equipment e JOIN equipment_status s USING (equipment_id)\nWHERE e.equipment_id = $1;",
+          "options": {
+            "queryReplacement": "={{ [$json.query.equipment_id || 'NO-ID', String(Math.min(168, Math.max(1, Number($json.query.hours) || 24)))] }}"
+          }
+        }
+      },
+      {
+        "id": "a4fad52a-abfa-4427-943c-57c7b9156b89",
+        "name": "History: Respond",
+        "type": "n8n-nodes-base.respondToWebhook",
+        "typeVersion": 1.1,
+        "position": [
+          480,
+          540
+        ],
+        "parameters": {
+          "respondWith": "firstIncomingItem",
+          "options": {
+            "responseHeaders": {
+              "entries": [
+                {
+                  "name": "Cache-Control",
+                  "value": "no-store"
+                }
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": "acc13fc5-ae67-43f1-9c81-ad30146b79a1",
+        "name": "Reset: POST /floor/reset",
+        "type": "n8n-nodes-base.webhook",
+        "typeVersion": 2,
+        "position": [
+          0,
+          720
+        ],
+        "webhookId": "eacbdb88-be18-44b9-870d-0efc23eb8d4a",
+        "parameters": {
+          "httpMethod": "POST",
+          "path": "floor/reset",
+          "responseMode": "responseNode",
+          "options": {}
+        }
+      },
+      {
+        "id": "52c79c11-a568-4c3a-b402-8f97aa3dff14",
+        "name": "Reset: Query",
+        "type": "n8n-nodes-base.postgres",
+        "typeVersion": 2.5,
+        "position": [
+          240,
+          720
+        ],
+        "alwaysOutputData": true,
+        "credentials": {
+          "postgres": {
+            "id": "AlgoManPgCred0001",
+            "name": "AlgoMan Postgres"
+          }
+        },
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "\nWITH r AS (\n  UPDATE equipment_status SET status = 'normal', reason = 'Reset from dashboard', updated_at = now()\n  WHERE equipment_id = $1 RETURNING equipment_id\n), l AS (\n  INSERT INTO alert_log (equipment_id, input_source, summary, decision, confidence, reason)\n  SELECT equipment_id, 'dashboard', 'Status reset from dashboard', 'RESET', NULL, 'Technician reset' FROM r\n  RETURNING id\n)\nSELECT (SELECT count(*) FROM r)::int AS reset, $1 AS equipment_id, (SELECT id FROM l) AS alert_id;",
+          "options": {
+            "queryReplacement": "={{ [$json.body.equipment_id || 'NO-ID'] }}"
+          }
+        }
+      },
+      {
+        "id": "47d77afe-7d88-4c7a-828e-5aabc18521ae",
+        "name": "Reset: Respond",
+        "type": "n8n-nodes-base.respondToWebhook",
+        "typeVersion": 1.1,
+        "position": [
+          480,
+          720
+        ],
+        "parameters": {
+          "respondWith": "firstIncomingItem",
+          "options": {
+            "responseHeaders": {
+              "entries": [
+                {
+                  "name": "Cache-Control",
+                  "value": "no-store"
+                }
+              ]
+            }
+          }
+        }
+      }
+    ],
+    "connections": {
+      "Dashboard: GET /floor": {
+        "main": [
+          [
+            {
+              "node": "Dashboard: Respond",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Equipment: GET /floor/equipment": {
+        "main": [
+          [
+            {
+              "node": "Equipment: Query",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Equipment: Query": {
+        "main": [
+          [
+            {
+              "node": "Equipment: Respond",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Alerts: GET /floor/alerts": {
+        "main": [
+          [
+            {
+              "node": "Alerts: Query",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Alerts: Query": {
+        "main": [
+          [
+            {
+              "node": "Alerts: Respond",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "History: GET /floor/history": {
+        "main": [
+          [
+            {
+              "node": "History: Query",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "History: Query": {
+        "main": [
+          [
+            {
+              "node": "History: Respond",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Reset: POST /floor/reset": {
+        "main": [
+          [
+            {
+              "node": "Reset: Query",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Reset: Query": {
+        "main": [
+          [
+            {
+              "node": "Reset: Respond",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "settings": {
+      "executionOrder": "v1"
+    },
+    "staticData": null,
+    "meta": null,
+    "nodeGroups": [],
+    "pinData": {},
+    "versionId": "00ef40d2-e65a-4d73-950b-732fa43baaae",
+    "activeVersionId": "00ef40d2-e65a-4d73-950b-732fa43baaae",
+    "versionCounter": 10,
+    "triggerCount": 5,
+    "sourceWorkflowId": null,
+    "tags": [],
+    "shared": [
+      {
+        "updatedAt": "2026-10-16T20:17:14.386Z",
+        "createdAt": "2026-10-16T20:17:14.386Z",
+        "role": "workflow:owner",
+        "workflowId": "7e9c3f2a4b5d6e81",
+        "projectId": "YGpJMX276ekEPLnt",
+        "project": {
+          "updatedAt": "2026-10-16T12:40:45.454Z",
+          "createdAt": "2026-10-16T12:38:47.605Z",
+          "id": "YGpJMX276ekEPLnt",
+          "name": "Algo Shank <algoshank@gmail.com>",
+          "type": "personal",
+          "icon": null,
+          "description": null,
+          "customTelemetryTags": [],
+          "creatorId": "9c99fa53-6272-4c19-80f9-50f37bfe567d"
+        }
+      }
+    ],
+    "versionMetadata": {
+      "name": null,
+      "description": null
+    }
+  }
+]

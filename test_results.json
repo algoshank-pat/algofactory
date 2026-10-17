@@ -1,0 +1,629 @@
+{
+  "project": "AlgoFactory",
+  "summary": {
+    "run_at": "2026-10-16T21:18:39.878Z",
+    "tests_passed": 10,
+    "tests_total": 10,
+    "runs_passed": 20,
+    "runs_total": 20,
+    "scenario5_pass": true,
+    "latency_sec": {
+      "sensor_p50": 1.46,
+      "sensor_max": 2.56,
+      "chat_p50": 2.23,
+      "chat_max": 3.54
+    },
+    "environment": {
+      "plant_clock": "2026-10-19T08:30 (PLANT_CLOCK, Monday after the 06:00-08:00 wet-wash)",
+      "model": "Fireworks gpt-oss-120b (agent + answers)",
+      "embeddings": "Fireworks qwen3-embedding-8b (1024)",
+      "rerank": "Pinecone bge-reranker-v2-m3"
+    },
+    "note": "One warm-up call before the sensor runs is not counted. Latency is wall-clock from the client."
+  },
+  "tests": [
+    {
+      "id": "S1",
+      "path": "sensor webhook (deterministic Postgres lookup by ID, no LLM in Station 1)",
+      "name": "Happy path: thermal overload",
+      "input": "Equipment-001 TH-001 temp 85°C",
+      "timestamp": null,
+      "expected": {
+        "action": "ACT",
+        "range": [
+          80,
+          100
+        ]
+      },
+      "runs": [
+        {
+          "run": 1,
+          "tool_called": false,
+          "tool_calls": [],
+          "equipment_found": [
+            "Motor 1 (Equipment-001)"
+          ],
+          "confidence": 94,
+          "decision": "ACT",
+          "status": "ALERT",
+          "explanation": "85 >= max_temp_c 85. Nothing scheduled explains the reading.",
+          "layer_scores": {
+            "layer0": 49,
+            "layer1": 40,
+            "layer2": 5,
+            "layer3": 0,
+            "layer4": 0
+          },
+          "reply": "Status: ALERT  \nDiagnosis: Motor Thermal Overload (TH-001) – temperature at max limit, risk of bearing friction or cooling failure  \nAction: Follow MP-TH-001 – reduce load, inspect bearing and cooling system, and if condition persists schedule bearing replacement  \nParts: Bearing kit (6208), ISO 32 turbine oil, thermal paste (lead time 2‑3 days for bearing, 1 day for lubricant)",
+          "latency_sec": 2.44,
+          "pass": true
+        },
+        {
+          "run": 2,
+          "tool_called": false,
+          "tool_calls": [],
+          "equipment_found": [
+            "Motor 1 (Equipment-001)"
+          ],
+          "confidence": 94,
+          "decision": "ACT",
+          "status": "ALERT",
+          "explanation": "85 >= max_temp_c 85. Nothing scheduled explains the reading.",
+          "layer_scores": {
+            "layer0": 49,
+            "layer1": 40,
+            "layer2": 5,
+            "layer3": 0,
+            "layer4": 0
+          },
+          "reply": "Status: ALERT  \nDiagnosis: Motor Thermal Overload (TH-001) – temperature at max limit, risk of bearing friction or cooling failure  \nAction: Follow MP-TH-001 – reduce load, inspect bearing and cooling system, and if condition persists schedule bearing replacement  \nParts: Bearing kit (6208), ISO 32 turbine oil, thermal paste (lead time 2‑3 days for bearing, 1 day for lubricant)",
+          "latency_sec": 2.56,
+          "pass": true
+        }
+      ],
+      "pass": true
+    },
+    {
+      "id": "S2",
+      "path": "sensor webhook (deterministic Postgres lookup by ID, no LLM in Station 1)",
+      "name": "Semantic only, no equipment ID",
+      "input": "Motor running hot",
+      "timestamp": null,
+      "expected": {
+        "action": "ACT",
+        "range": [
+          60,
+          80
+        ]
+      },
+      "runs": [
+        {
+          "run": 1,
+          "tool_called": false,
+          "tool_calls": [],
+          "equipment_found": [],
+          "confidence": 75,
+          "decision": "ACT",
+          "status": "ALERT",
+          "explanation": "No reading; specific symptom reported. No active schedule.",
+          "layer_scores": {
+            "layer0": 50,
+            "layer1": 25,
+            "layer2": 0,
+            "layer3": 0,
+            "layer4": 0
+          },
+          "reply": "Status: ALERT  \nDiagnosis: Motor thermal overload – temperature > max + 5 °C, likely bearing friction or cooling deficiency (TH‑001).  \nAction: Follow MP‑TH‑001 – reduce load, inspect cooling system, then check bearings; if hot/rough, schedule bearing replacement.  \nParts: Bearing kit (6208/6309) – 2‑3 days; ISO 32 lubricant – 1 day; thermal paste – 1 day.",
+          "latency_sec": 2.28,
+          "pass": true
+        },
+        {
+          "run": 2,
+          "tool_called": false,
+          "tool_calls": [],
+          "equipment_found": [],
+          "confidence": 75,
+          "decision": "ACT",
+          "status": "ALERT",
+          "explanation": "No reading; specific symptom reported. No active schedule.",
+          "layer_scores": {
+            "layer0": 50,
+            "layer1": 25,
+            "layer2": 0,
+            "layer3": 0,
+            "layer4": 0
+          },
+          "reply": "Status: ALERT  \nDiagnosis: Motor thermal overload – temperature > max + 5 °C, likely bearing friction or cooling deficiency (TH‑001).  \nAction: Follow MP‑TH‑001 – reduce load, inspect cooling system, then check bearings; if hot/rough, schedule bearing replacement.  \nParts: Bearing kit (6208/6309) – 2‑3 days; ISO 32 lubricant – 1 day; thermal paste – 1 day.",
+          "latency_sec": 2.23,
+          "pass": true
+        }
+      ],
+      "pass": true
+    },
+    {
+      "id": "S3",
+      "path": "sensor webhook (deterministic Postgres lookup by ID, no LLM in Station 1)",
+      "name": "Sensor validates vibration anomaly",
+      "input": "Equipment-005 VB-001 vibration 8 mm/s",
+      "timestamp": null,
+      "expected": {
+        "action": "ACT",
+        "range": [
+          75,
+          100
+        ]
+      },
+      "runs": [
+        {
+          "run": 1,
+          "tool_called": false,
+          "tool_calls": [],
+          "equipment_found": [
+            "Compressor 1 (Equipment-005)"
+          ],
+          "confidence": 94,
+          "decision": "ACT",
+          "status": "ALERT",
+          "explanation": "8 >= max_vibration_mm_s 8. Nothing scheduled explains the reading.",
+          "layer_scores": {
+            "layer0": 49,
+            "layer1": 40,
+            "layer2": 5,
+            "layer3": 0,
+            "layer4": 0
+          },
+          "reply": "Status: ALERT  \nDiagnosis: VB-001 – bearing wear causing vibration spike at max (8 mm/s)  \nAction: Immediate bearing replacement per VB-001 playbook; schedule replacement now and verify alignment after install  \nParts: Replacement bearing Piston‑Ring‑PR‑88 (lead time 2‑3 days), alignment shims, bearing puller tool (on‑site)",
+          "latency_sec": 1.92,
+          "pass": true
+        },
+        {
+          "run": 2,
+          "tool_called": false,
+          "tool_calls": [],
+          "equipment_found": [
+            "Compressor 1 (Equipment-005)"
+          ],
+          "confidence": 94,
+          "decision": "ACT",
+          "status": "ALERT",
+          "explanation": "8 >= max_vibration_mm_s 8. Nothing scheduled explains the reading.",
+          "layer_scores": {
+            "layer0": 49,
+            "layer1": 40,
+            "layer2": 5,
+            "layer3": 0,
+            "layer4": 0
+          },
+          "reply": "Status: ALERT  \nDiagnosis: VB-001 – bearing wear causing vibration spike at max (8 mm/s)  \nAction: Immediate bearing replacement per VB-001 playbook; schedule replacement now and verify alignment after install  \nParts: Replacement bearing Piston‑Ring‑PR‑88 (lead time 2‑3 days), alignment shims, bearing puller tool (on‑site)",
+          "latency_sec": 1.96,
+          "pass": true
+        }
+      ],
+      "pass": true
+    },
+    {
+      "id": "S4",
+      "path": "sensor webhook (deterministic Postgres lookup by ID, no LLM in Station 1)",
+      "name": "Sensor contradicts anomaly",
+      "input": "Equipment-001 TH-002 temp 68°C",
+      "timestamp": null,
+      "expected": {
+        "action": "ESCALATE",
+        "range": [
+          0,
+          45
+        ]
+      },
+      "runs": [
+        {
+          "run": 1,
+          "tool_called": false,
+          "tool_calls": [],
+          "equipment_found": [
+            "Motor 1 (Equipment-001)"
+          ],
+          "confidence": 35,
+          "decision": "ESCALATE",
+          "status": "NEEDS INVESTIGATION",
+          "explanation": "68 below max_temp_c 85. Evidence is not strong enough to diagnose.",
+          "layer_scores": {
+            "layer0": 35,
+            "layer1": 0,
+            "layer2": 0,
+            "layer3": 0,
+            "layer4": 0
+          },
+          "reply": "Status: NEEDS INVESTIGATION\nDiagnosis: 68 below max_temp_c 85. Evidence is not strong enough to confirm a fault (confidence 35%).\nAction: Verify the sensor reading on Equipment-001 and keep monitoring; escalate to a technician if it keeps rising.\nParts: None",
+          "latency_sec": 0.97,
+          "pass": true
+        },
+        {
+          "run": 2,
+          "tool_called": false,
+          "tool_calls": [],
+          "equipment_found": [
+            "Motor 1 (Equipment-001)"
+          ],
+          "confidence": 35,
+          "decision": "ESCALATE",
+          "status": "NEEDS INVESTIGATION",
+          "explanation": "68 below max_temp_c 85. Evidence is not strong enough to diagnose.",
+          "layer_scores": {
+            "layer0": 35,
+            "layer1": 0,
+            "layer2": 0,
+            "layer3": 0,
+            "layer4": 0
+          },
+          "reply": "Status: NEEDS INVESTIGATION\nDiagnosis: 68 below max_temp_c 85. Evidence is not strong enough to confirm a fault (confidence 35%).\nAction: Verify the sensor reading on Equipment-001 and keep monitoring; escalate to a technician if it keeps rising.\nParts: None",
+          "latency_sec": 1.14,
+          "pass": true
+        }
+      ],
+      "pass": true
+    },
+    {
+      "id": "S5",
+      "path": "sensor webhook (deterministic Postgres lookup by ID, no LLM in Station 1)",
+      "name": "Humidity false positive after cleaning",
+      "input": "Equipment-001 humidity 75%",
+      "timestamp": "2026-10-19T08:30",
+      "expected": {
+        "action": "HOLD",
+        "range": [
+          0,
+          10
+        ]
+      },
+      "runs": [
+        {
+          "run": 1,
+          "tool_called": false,
+          "tool_calls": [],
+          "equipment_found": [
+            "Motor 1 (Equipment-001)"
+          ],
+          "confidence": 10,
+          "decision": "HOLD",
+          "status": "FALSE POSITIVE",
+          "explanation": "wet-wash cleaning Monday 06:00 (2h) explains humidity up to 75%. Post-cleaning max expected 75%; reading 75% is normal.",
+          "layer_scores": {
+            "layer0": 50,
+            "layer1": 40,
+            "layer2": -40,
+            "layer3": -15,
+            "layer4": -5
+          },
+          "reply": "Status: FALSE POSITIVE\nDiagnosis: humidity 75 on Equipment-001 is explained by context. wet-wash cleaning Monday 06:00 (2h) explains humidity up to 75%. Post-cleaning max expected 75%; reading 75% is normal.\nAction: No action needed. Readings should return to baseline by 10:00.\nParts: None",
+          "latency_sec": 0.94,
+          "pass": true
+        },
+        {
+          "run": 2,
+          "tool_called": false,
+          "tool_calls": [],
+          "equipment_found": [
+            "Motor 1 (Equipment-001)"
+          ],
+          "confidence": 10,
+          "decision": "HOLD",
+          "status": "FALSE POSITIVE",
+          "explanation": "wet-wash cleaning Monday 06:00 (2h) explains humidity up to 75%. Post-cleaning max expected 75%; reading 75% is normal.",
+          "layer_scores": {
+            "layer0": 50,
+            "layer1": 40,
+            "layer2": -40,
+            "layer3": -15,
+            "layer4": -5
+          },
+          "reply": "Status: FALSE POSITIVE\nDiagnosis: humidity 75 on Equipment-001 is explained by context. wet-wash cleaning Monday 06:00 (2h) explains humidity up to 75%. Post-cleaning max expected 75%; reading 75% is normal.\nAction: No action needed. Readings should return to baseline by 10:00.\nParts: None",
+          "latency_sec": 0.93,
+          "pass": true
+        }
+      ],
+      "pass": true
+    },
+    {
+      "id": "S6",
+      "path": "sensor webhook (deterministic Postgres lookup by ID, no LLM in Station 1)",
+      "name": "Too vague, ask for clarification",
+      "input": "Weird noise from the floor",
+      "timestamp": null,
+      "expected": {
+        "action": "ESCALATE",
+        "range": [
+          0,
+          30
+        ],
+        "clarify": true
+      },
+      "runs": [
+        {
+          "run": 1,
+          "tool_called": false,
+          "tool_calls": [],
+          "equipment_found": [],
+          "confidence": 22,
+          "decision": "ESCALATE",
+          "status": "NEEDS INVESTIGATION",
+          "explanation": "Query is too vague: no equipment ID or sensor reading. Ask the operator which equipment and what was observed.",
+          "layer_scores": {
+            "layer0": 22,
+            "layer1": 0,
+            "layer2": 0,
+            "layer3": 0,
+            "layer4": 0
+          },
+          "reply": "Status: NEEDS INVESTIGATION\nDiagnosis: Report is too vague to diagnose: no equipment ID or sensor reading.\nAction: Specify the equipment ID and the sensor reading or symptom observed.\nParts: None",
+          "latency_sec": 0.93,
+          "pass": true
+        },
+        {
+          "run": 2,
+          "tool_called": false,
+          "tool_calls": [],
+          "equipment_found": [],
+          "confidence": 22,
+          "decision": "ESCALATE",
+          "status": "NEEDS INVESTIGATION",
+          "explanation": "Query is too vague: no equipment ID or sensor reading. Ask the operator which equipment and what was observed.",
+          "layer_scores": {
+            "layer0": 22,
+            "layer1": 0,
+            "layer2": 0,
+            "layer3": 0,
+            "layer4": 0
+          },
+          "reply": "Status: NEEDS INVESTIGATION\nDiagnosis: Report is too vague to diagnose: no equipment ID or sensor reading.\nAction: Specify the equipment ID and the sensor reading or symptom observed.\nParts: None",
+          "latency_sec": 1.46,
+          "pass": true
+        }
+      ],
+      "pass": true
+    },
+    {
+      "id": "C1",
+      "path": "chatbot (AI Agent tool calls)",
+      "name": "Lookup by ID, post-cleaning humidity",
+      "input": "Equipment-001 humidity is 75%, should I worry?",
+      "expected": "lookup finds Equipment-001, check_alert returns HOLD",
+      "runs": [
+        {
+          "run": 1,
+          "tool_called": true,
+          "tool_calls": [
+            {
+              "tool": "lookup_equipment",
+              "args": {
+                "name_or_id": "Equipment-001"
+              }
+            },
+            {
+              "tool": "check_alert",
+              "args": {
+                "query": "Equipment-001 humidity is 75%, should I worry?",
+                "equipment_id": "Equipment-001"
+              }
+            }
+          ],
+          "equipment_found": [
+            "Motor 1 (Equipment-001)"
+          ],
+          "confidence": 10,
+          "decision": "HOLD",
+          "pass": true,
+          "reply": "Decision: HOLD (Motor 1)  \nWhy: Humidity 75 % is normal during the scheduled wet‑wash cleaning.  \nConfidence: 10%  \nNext step: No action needed; the reading should return to baseline after the cleaning finishes.",
+          "latency_sec": 3.54
+        },
+        {
+          "run": 2,
+          "tool_called": true,
+          "tool_calls": [
+            {
+              "tool": "lookup_equipment",
+              "args": {
+                "name_or_id": "Equipment-001"
+              }
+            },
+            {
+              "tool": "check_alert",
+              "args": {
+                "query": "Equipment-001 humidity is 75%, should I worry?",
+                "equipment_id": "Equipment-001"
+              }
+            }
+          ],
+          "equipment_found": [
+            "Motor 1 (Equipment-001)"
+          ],
+          "confidence": 10,
+          "decision": "HOLD",
+          "pass": true,
+          "reply": "Decision: HOLD (Motor 1)  \nWhy: Humidity 75 % is normal during the scheduled wet‑wash cleaning.  \nConfidence: 10%  \nNext step: No action needed; the reading should return to baseline by 10 :00.",
+          "latency_sec": 2.82
+        }
+      ],
+      "pass": true
+    },
+    {
+      "id": "C2",
+      "path": "chatbot (AI Agent tool calls)",
+      "name": "Lookup by plain name",
+      "input": "Weird noise on Pump 2",
+      "expected": "lookup finds Pump 2 (Equipment-008), then escalates or asks for detail",
+      "runs": [
+        {
+          "run": 1,
+          "tool_called": true,
+          "tool_calls": [
+            {
+              "tool": "lookup_equipment",
+              "args": {
+                "name_or_id": "Pump 2"
+              }
+            },
+            {
+              "tool": "check_alert",
+              "args": {
+                "query": "Weird noise on Pump 2",
+                "equipment_id": "Equipment-008"
+              }
+            }
+          ],
+          "equipment_found": [
+            "Pump 2 (Equipment-008)"
+          ],
+          "confidence": 28,
+          "decision": "ESCALATE",
+          "pass": true,
+          "reply": "Decision: ESCALATE (Pump 2)  \nWhy: The report is vague and there’s no sensor data to confirm a fault.  \nConfidence: 28%  \nNext step: Check the acoustic sensor on Pump 2 and monitor; if the noise persists, call a technician.",
+          "latency_sec": 2.97
+        },
+        {
+          "run": 2,
+          "tool_called": true,
+          "tool_calls": [
+            {
+              "tool": "lookup_equipment",
+              "args": {
+                "name_or_id": "Pump 2"
+              }
+            },
+            {
+              "tool": "check_alert",
+              "args": {
+                "query": "Weird noise on Pump 2",
+                "equipment_id": "Equipment-008"
+              }
+            }
+          ],
+          "equipment_found": [
+            "Pump 2 (Equipment-008)"
+          ],
+          "confidence": 28,
+          "decision": "ESCALATE",
+          "pass": true,
+          "reply": "Decision: ESCALATE (Pump 2)  \nWhy: The report is vague and there’s no sensor reading to confirm a fault.  \nConfidence: 28%  \nNext step: Check the acoustic sensor on Pump 2 and monitor; if the noise persists or worsens, call a technician.",
+          "latency_sec": 2.92
+        }
+      ],
+      "pass": true
+    },
+    {
+      "id": "C3",
+      "path": "chatbot (AI Agent tool calls)",
+      "name": "Several machines match",
+      "input": "Motor running hot",
+      "expected": "lookup returns several motors, no check_alert, asks which one",
+      "runs": [
+        {
+          "run": 1,
+          "tool_called": true,
+          "tool_calls": [
+            {
+              "tool": "lookup_equipment",
+              "args": {
+                "name_or_id": "Motor"
+              }
+            }
+          ],
+          "equipment_found": [
+            "Motor 1 (Equipment-001)",
+            "Motor 10 (Equipment-025)",
+            "Motor 11 (Equipment-028)",
+            "Motor 2 (Equipment-002)",
+            "Motor 3 (Equipment-003)",
+            "Motor 4 (Equipment-007)",
+            "Motor 5 (Equipment-009)",
+            "Motor 6 (Equipment-012)",
+            "Motor 7 (Equipment-016)",
+            "Motor 8 (Equipment-018)",
+            "Motor 9 (Equipment-021)"
+          ],
+          "confidence": null,
+          "decision": "ASKED",
+          "pass": true,
+          "reply": "Did you mean one of these motors?\n\n- Motor 1 – Austin Plant, Line 1  \n- Motor 2 – Austin Plant, Line 1  \n- Motor 3 – Columbus Plant, Line 2  \n- Motor 4 – Fremont Plant, Line 4  \n- Motor 5 – Austin Plant, Line 1  \n- Motor 6 – Fremont Plant, Line 4  \n- Motor 7 – Columbus Plant, Line 3  \n- Motor 8 – Fremont Plant, Line 4  \n\nPlease tell me the exact name or ID.",
+          "latency_sec": 1.96
+        },
+        {
+          "run": 2,
+          "tool_called": true,
+          "tool_calls": [
+            {
+              "tool": "lookup_equipment",
+              "args": {
+                "name_or_id": "Motor"
+              }
+            }
+          ],
+          "equipment_found": [
+            "Motor 1 (Equipment-001)",
+            "Motor 10 (Equipment-025)",
+            "Motor 11 (Equipment-028)",
+            "Motor 2 (Equipment-002)",
+            "Motor 3 (Equipment-003)",
+            "Motor 4 (Equipment-007)",
+            "Motor 5 (Equipment-009)",
+            "Motor 6 (Equipment-012)",
+            "Motor 7 (Equipment-016)",
+            "Motor 8 (Equipment-018)",
+            "Motor 9 (Equipment-021)"
+          ],
+          "confidence": null,
+          "decision": "ASKED",
+          "pass": true,
+          "reply": "Did you mean one of these motors?\n\n- Motor 1 – Austin Plant, Line 1  \n- Motor 2 – Austin Plant, Line 1  \n- Motor 3 – Columbus Plant, Line 2  \n- Motor 4 – Fremont Plant, Line 4  \n- Motor 5 – Austin Plant, Line 1  \n- Motor 6 – Fremont Plant, Line 4  \n- Motor 7 – Columbus Plant, Line 3  \n- Motor 8 – Fremont Plant, Line 4  \n\nPlease tell me the exact name or ID.",
+          "latency_sec": 2.23
+        }
+      ],
+      "pass": true
+    },
+    {
+      "id": "C4",
+      "path": "chatbot (AI Agent tool calls)",
+      "name": "No machine matches",
+      "input": "Is the compressor on Line 9 ok?",
+      "expected": "lookup returns nothing, no check_alert, asks, names no machine",
+      "runs": [
+        {
+          "run": 1,
+          "tool_called": true,
+          "tool_calls": [
+            {
+              "tool": "lookup_equipment",
+              "args": {
+                "name_or_id": "compressor on Line 9"
+              }
+            }
+          ],
+          "equipment_found": [],
+          "confidence": null,
+          "decision": "ASKED",
+          "pass": true,
+          "reply": "I couldn’t find a machine matching “compressor on Line 9.” Could you give me the exact name or ID of the equipment?",
+          "latency_sec": 1.32
+        },
+        {
+          "run": 2,
+          "tool_called": true,
+          "tool_calls": [
+            {
+              "tool": "lookup_equipment",
+              "args": {
+                "name_or_id": "compressor on Line 9"
+              }
+            }
+          ],
+          "equipment_found": [],
+          "confidence": null,
+          "decision": "ASKED",
+          "pass": true,
+          "reply": "I couldn’t find a machine matching “compressor on Line 9.” Could you give me the exact name or ID of the equipment?",
+          "latency_sec": 1.1
+        }
+      ],
+      "pass": true
+    }
+  ]
+}

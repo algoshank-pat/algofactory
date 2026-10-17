@@ -1,0 +1,450 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AlgoFactory Floor</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0f1218; --panel: #171b23; --panel-2: #1d222c; --line: #2a303c; --text: #e8ebf0; --muted: #8b93a3;
+    --normal: #3ecf8e; --watch: #f2b134; --fault: #ff5d5d; --explained: #5aa9ff; --maintenance: #a78bfa;
+    --accent: #f2b134;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.45 Inter, system-ui, sans-serif; }
+  button { font: inherit; cursor: pointer; }
+  .mono { font-family: 'JetBrains Mono', ui-monospace, monospace; }
+  .wrap { max-width: 1440px; margin: 0 auto; padding: 20px 16px 40px; }
+  header { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; margin-bottom: 18px; }
+  .brand { font-size: 22px; font-weight: 800; letter-spacing: -0.02em; }
+  .brand span { color: var(--accent); }
+  .sub { color: var(--muted); font-size: 13px; }
+  .spacer { flex: 1; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip { background: var(--panel); border: 1px solid var(--line); color: var(--text); border-radius: 999px; padding: 6px 12px; font-size: 13px; }
+  .chip.on { border-color: var(--accent); color: var(--accent); }
+  .tiles { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; margin-bottom: 18px; }
+  .tile { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; text-align: left; color: var(--text); border-top: 3px solid var(--c); }
+  .tile.on { outline: 2px solid var(--c); }
+  .tile .n { font-size: 28px; font-weight: 800; }
+  .tile .l { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .08em; }
+  /* Left: map, then alerts below it. Right: machine board, then chat and test alert. */
+  .grid { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 18px; align-items: start; }
+  .machines-panel { max-height: 600px; overflow-y: auto; }
+  .machines-panel .line-row { grid-template-columns: 52px minmax(0, 1fr); }
+  .machines-panel .cards { grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); }
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 14px; }
+  .panel h2 { margin: 0 0 10px; font-size: 13px; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); font-weight: 700; }
+  .site { margin-bottom: 18px; }
+  .site h3 { margin: 0 0 8px; font-size: 16px; }
+  .site h3 small { color: var(--muted); font-weight: 500; margin-left: 6px; }
+  .line-row { display: grid; grid-template-columns: 64px minmax(0, 1fr); gap: 10px; margin-bottom: 10px; }
+  .line-label { color: var(--muted); font-size: 12px; padding-top: 10px; }
+  .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 8px; }
+  .card { text-align: left; background: var(--panel-2); border: 1px solid var(--line); border-left: 4px solid var(--c); border-radius: 10px; padding: 10px 12px; color: var(--text); }
+  .card:hover { border-color: var(--c); }
+  .card .top { display: flex; justify-content: space-between; align-items: center; gap: 6px; }
+  .card .name { font-weight: 700; }
+  .card .id { color: var(--muted); font-size: 11px; }
+  .card .reason { color: var(--muted); font-size: 12px; margin-top: 6px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .badge { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--c); }
+  .badge::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: var(--c); }
+  .side { display: grid; gap: 18px; }
+  .presets { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 8px; }
+  .preset { background: var(--panel-2); border: 1px solid var(--line); color: var(--text); border-radius: 8px; padding: 8px; text-align: left; font-size: 12px; }
+  .preset b { display: block; font-size: 11px; color: var(--muted); font-weight: 600; }
+  .preset:hover { border-color: var(--accent); }
+  .preset.on { border-color: var(--accent); background: #2a2516; }
+  .preset:disabled { opacity: .6; cursor: wait; }
+  textarea { width: 100%; background: var(--bg); color: var(--text); border: 1px solid var(--line); border-radius: 8px; padding: 8px; font: 13px 'JetBrains Mono', monospace; resize: vertical; min-height: 44px; }
+  .send { width: 100%; margin-top: 8px; background: var(--accent); color: #1a1405; border: 0; border-radius: 8px; padding: 10px; font-weight: 800; }
+  .send:disabled { opacity: .6; cursor: wait; }
+  .result { margin-top: 10px; background: var(--panel-2); border: 1px solid var(--line); border-left: 4px solid var(--c); border-radius: 10px; padding: 10px 12px; font-size: 13px; }
+  .result .head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin-bottom: 6px; }
+  .result .act { font-size: 18px; font-weight: 800; color: var(--c); }
+  .result pre { white-space: pre-wrap; margin: 6px 0 0; font: 12px/1.5 'JetBrains Mono', monospace; color: var(--text); }
+  .alerts { max-height: 520px; overflow: auto; }
+  .alert { display: grid; grid-template-columns: 72px minmax(0, 1fr) auto; gap: 8px; padding: 8px 0; border-bottom: 1px solid var(--line); font-size: 13px; }
+  .alert .t { white-space: nowrap; }
+  .alert .s { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .alert .dec { white-space: nowrap; }
+  .alert:last-child { border-bottom: 0; }
+  .alert .t { color: var(--muted); font-size: 12px; }
+  .alert .s { color: var(--muted); font-size: 12px; }
+  .dec { font-weight: 800; font-size: 12px; color: var(--c); }
+  .empty { color: var(--muted); padding: 10px 0; }
+  .err { color: var(--fault); margin: 0 0 12px; }
+  .overlay { position: fixed; inset: 0; background: rgba(0,0,0,.55); display: flex; justify-content: flex-end; z-index: 10; }
+  .drawer { width: min(460px, 100%); height: 100%; overflow: auto; background: var(--panel); border-left: 1px solid var(--line); padding: 18px; }
+  .drawer h3 { margin: 0; font-size: 20px; }
+  .kv { display: grid; grid-template-columns: 120px 1fr; gap: 4px 10px; margin: 12px 0; font-size: 13px; }
+  .kv div:nth-child(odd) { color: var(--muted); }
+  .row-btns { display: flex; gap: 8px; margin: 10px 0 16px; }
+  .btn { background: var(--panel-2); border: 1px solid var(--line); color: var(--text); border-radius: 8px; padding: 8px 12px; }
+  .btn.danger { border-color: var(--fault); color: var(--fault); }
+  .chat-log { height: 340px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; padding: 2px 2px 8px; }
+  .msg { max-width: 88%; padding: 8px 11px; border-radius: 12px; font-size: 13px; line-height: 1.45; white-space: pre-wrap; word-wrap: break-word; }
+  .msg.user { align-self: flex-end; background: #2b3242; border-bottom-right-radius: 4px; }
+  .msg.bot { align-self: flex-start; background: var(--panel-2); border: 1px solid var(--line); border-bottom-left-radius: 4px; }
+  .msg.bot.err { border-color: var(--fault); color: var(--fault); }
+  .msg .tools { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+  .msg .tool { font: 11px 'JetBrains Mono', monospace; color: var(--muted); background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 1px 6px; }
+  .msg .meta { font-size: 11px; color: var(--muted); margin-top: 4px; }
+  .typing { align-self: flex-start; color: var(--muted); font-size: 12px; padding: 4px 2px; }
+  .suggest { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0 8px; }
+  .suggest button { background: var(--bg); border: 1px solid var(--line); color: var(--text); border-radius: 999px; padding: 4px 10px; font-size: 12px; }
+  .chat-input { display: flex; gap: 6px; }
+  .chat-input input { flex: 1; min-width: 0; background: var(--bg); color: var(--text); border: 1px solid var(--line); border-radius: 8px; padding: 9px 10px; font: inherit; }
+  .chat-input button { background: var(--accent); color: #1a1405; border: 0; border-radius: 8px; padding: 0 14px; font-weight: 800; }
+  .chat-input button:disabled { opacity: .6; cursor: wait; }
+  .map-panel { margin-bottom: 0; }
+  .map-wrap { position: relative; }
+  .map-wrap svg { width: 100%; height: auto; display: block; }
+  .state { fill: #1f2530; stroke: #313847; stroke-width: 0.8; }
+  .state.has-site { fill: #262d3a; }
+  .nation { fill: none; stroke: #3a4252; stroke-width: 1.2; }
+  .site-marker { cursor: pointer; }
+  .site-marker .halo { fill: var(--c); opacity: .18; }
+  .site-marker.fault .halo { animation: pulse 1.6s ease-out infinite; transform-box: fill-box; transform-origin: center; }
+  .site-marker .dot { fill: var(--c); stroke: var(--bg); stroke-width: 2; }
+  .site-marker.on .dot { stroke: var(--text); stroke-width: 3; }
+  .map-wrap svg { max-width: 860px; margin: 0 auto; }
+  .site-marker text { fill: var(--text); font: 600 15px Inter, sans-serif; paint-order: stroke; stroke: var(--bg); stroke-width: 3px; }
+  .site-marker text.small { fill: var(--muted); font-weight: 500; font-size: 12px; }
+  .site-marker.fault text.small, .site-marker.watch text.small { fill: var(--c); }
+  @keyframes pulse { from { transform: scale(.6); opacity: .45; } to { transform: scale(1.6); opacity: 0; } }
+  .map-legend { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 6px; }
+  @media (max-width: 1100px) { .grid { grid-template-columns: 1fr; } }
+  @media (max-width: 640px) { .tiles { grid-template-columns: repeat(3, minmax(0, 1fr)); } .line-row { grid-template-columns: 1fr; } .line-label { padding-top: 0; } .presets { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/htm@3.1.1/dist/htm.umd.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/topojson/3.0.2/topojson.min.js"></script>
+<script>
+// AlgoFactory floor dashboard. Data comes from the n8n "AlgoFactory - 5 Floor API" workflow on the same origin.
+const { useState, useEffect, useCallback, useMemo } = React;
+const html = htm.bind(React.createElement);
+const API = '/webhook';
+const STATUSES = ['normal', 'watch', 'fault', 'explained', 'maintenance'];
+const COLOR = { normal: 'var(--normal)', watch: 'var(--watch)', fault: 'var(--fault)', explained: 'var(--explained)', maintenance: 'var(--maintenance)' };
+const DECISION_COLOR = { ACT: 'var(--fault)', ESCALATE: 'var(--watch)', HOLD: 'var(--explained)', RESET: 'var(--normal)' };
+const PRESETS = [
+  { label: 'Thermal overload', hint: 'expect ACT', query: 'Equipment-001 TH-001 temp 85°C' },
+  { label: 'Humidity after cleaning', hint: 'expect HOLD', query: 'Equipment-001 humidity 75%' },
+  { label: 'Compressor vibration', hint: 'expect ACT', query: 'Equipment-005 VB-001 vibration 8 mm/s' },
+  { label: 'Vague noise on Pump 2', hint: 'expect ESCALATE', query: 'Equipment-008 weird noise' },
+];
+
+const getJson = async (path, opts) => {
+  const r = await fetch(API + path, opts);
+  if (!r.ok) throw new Error(`${path}: HTTP ${r.status}`);
+  return r.json();
+};
+const time = ts => new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+const ago = ts => { const m = Math.round((Date.now() - new Date(ts)) / 60000); return m < 1 ? 'just now' : m < 60 ? `${m} min ago` : `${Math.round(m / 60)} h ago`; };
+const reading = r => r && r.sensor_value != null ? `${r.sensor_type || 'reading'} ${r.sensor_value}` : '';
+
+function Badge({ status }) {
+  return html`<span class="badge" style=${{ '--c': COLOR[status] }}>${status}</span>`;
+}
+
+// Plant locations (site-level reference data; equipment rows carry the site name)
+// label: which side of the dot the text goes; dy nudges it to avoid neighbours (Columbus / DC sit close together)
+const SITE_COORDS = {
+  'Seattle Plant':       { lon: -122.33, lat: 47.61, city: 'Seattle, WA',    label: 'right', dy: 0 },
+  'Fremont Plant':       { lon: -121.99, lat: 37.55, city: 'Fremont, CA',    label: 'right', dy: 0 },
+  'Minneapolis Plant':   { lon: -93.27,  lat: 44.98, city: 'Minneapolis, MN', label: 'right', dy: 0 },
+  'Austin Plant':        { lon: -97.74,  lat: 30.27, city: 'Austin, TX',     label: 'right', dy: 0 },
+  'Denver Plant':        { lon: -104.99, lat: 39.74, city: 'Denver, CO',     label: 'right', dy: 0 },
+  'Columbus Plant':      { lon: -83.00,  lat: 39.96, city: 'Columbus, OH',   label: 'right', dy: 0 },
+  'Miami Plant':         { lon: -80.19,  lat: 25.76, city: 'Miami, FL',      label: 'left',  dy: 0 },
+};
+const SEVERITY = ['fault', 'watch', 'maintenance', 'explained', 'normal'];
+const MAP_W = 975, MAP_H = 610;
+const ATLAS = 'https://cdn.jsdelivr.net/npm/us-atlas@3.0.1/states-albers-10m.json';   // already projected to 975x610 (Albers USA)
+
+function UsMap({ equipment, site, onSite }) {
+  const [shapes, setShapes] = useState(null);
+  const [err, setErr] = useState('');
+  useEffect(() => {
+    fetch(ATLAS).then(r => r.json()).then(us => {
+      const path = d3.geoPath();
+      setShapes({
+        states: topojson.feature(us, us.objects.states).features.map(f => ({ name: f.properties.name, d: path(f) })),
+        nation: path(topojson.mesh(us, us.objects.nation))
+      });
+    }).catch(e => setErr(e.message));
+  }, []);
+  // Same Albers USA projection the atlas was built with
+  const projection = useMemo(() => d3.geoAlbersUsa().scale(1300).translate([487.5, 305]), []);
+  const sites = Object.entries(SITE_COORDS).map(([name, c]) => {
+    const ms = equipment.filter(m => m.site === name);
+    const worst = SEVERITY.find(s => ms.some(m => m.status === s)) || 'normal';
+    const issues = ms.filter(m => m.status === 'fault' || m.status === 'watch').length;
+    const [x, y] = projection([c.lon, c.lat]) || [0, 0];
+    return { name, ...c, x, y, count: ms.length, worst, issues };
+  });
+  const siteStates = new Set(['Texas', 'Ohio', 'California', 'Minnesota', 'Florida', 'Colorado', 'Washington']);
+  return html`
+    <div class="panel map-panel">
+      <h2>Plants</h2>
+      ${err && html`<div class="err">Map unavailable (${err})</div>`}
+      <div class="map-wrap">
+        <svg viewBox=${`0 0 ${MAP_W} ${MAP_H}`} role="img" aria-label="Map of AlgoFactory plants in the United States">
+          ${shapes && shapes.states.map(s => html`<path key=${s.name} class=${'state' + (siteStates.has(s.name) ? ' has-site' : '')} d=${s.d}><title>${s.name}</title></path>`)}
+          ${shapes && html`<path class="nation" d=${shapes.nation} />`}
+          ${sites.map(s => {
+            const r = 6 + s.count * 0.8;
+            const right = s.label !== 'left';
+            return html`
+              <g key=${s.name} class=${'site-marker ' + s.worst + (site === s.name ? ' on' : '')} style=${{ '--c': COLOR[s.worst] }}
+                 transform=${`translate(${s.x},${s.y})`} onClick=${() => onSite(site === s.name ? 'All' : s.name)}>
+                <title>${s.name}: ${s.count} machines, worst status ${s.worst}</title>
+                <circle class="halo" r=${r * 2} />
+                <circle class="dot" r=${r} />
+                <text x=${right ? r + 6 : -(r + 6)} y=${s.dy - 1} text-anchor=${right ? 'start' : 'end'}>${s.city}</text>
+                <text class="small" x=${right ? r + 6 : -(r + 6)} y=${s.dy + 13} text-anchor=${right ? 'start' : 'end'}>${s.issues ? `${s.issues} need attention` : `${s.count} machines`}</text>
+              </g>`;
+          })}
+        </svg>
+      </div>
+      <div class="map-legend sub">${SEVERITY.map(s => html`<span key=${s}><${Badge} status=${s} /></span>`)}<span>Dot color = worst status at the plant · click a plant to filter</span></div>
+    </div>`;
+}
+
+function MachineCard({ m, onOpen }) {
+  return html`
+    <button class="card" style=${{ '--c': COLOR[m.status] }} onClick=${() => onOpen(m.equipment_id)}>
+      <div class="top"><span class="name">${m.name}</span><${Badge} status=${m.status} /></div>
+      <div class="id mono">${m.equipment_id} · ${m.type}${m.alerts_today ? ` · ${m.alerts_today} alert${m.alerts_today > 1 ? 's' : ''} today` : ''}</div>
+      ${m.status !== 'normal' && html`<div class="reason">${reading(m.last_reading) ? reading(m.last_reading) + ' · ' : ''}${m.reason || ''}</div>`}
+    </button>`;
+}
+
+function TestAlert({ onDone }) {
+  const [query, setQuery] = useState('');          // custom text only; presets send themselves
+  const [busy, setBusy] = useState(false);
+  const [res, setRes] = useState(null);
+  const send = async (text, label) => {
+    setBusy(true); setRes(null);
+    try {
+      const t0 = performance.now();
+      const o = await getJson('/anomaly-check', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ query: text, source: 'dashboard' }) });
+      setRes({ ...o, sent: text, label, wall: ((performance.now() - t0) / 1000).toFixed(1) });
+      onDone();
+    } catch (e) { setRes({ error: e.message }); }
+    setBusy(false);
+  };
+  const c = res && DECISION_COLOR[res.action];
+  return html`
+    <div class="panel">
+      <h2>Send test alert</h2>
+      <div class="sub" style=${{ marginBottom: '8px' }}>One click sends the alert through Stations 1-4.</div>
+      <div class="presets">
+        ${PRESETS.map(p => html`<button class=${'preset' + (res && res.label === p.label ? ' on' : '')} key=${p.label} disabled=${busy} onClick=${() => send(p.query, p.label)}><b>${p.hint}</b>${p.label}</button>`)}
+      </div>
+      <textarea value=${query} onInput=${e => setQuery(e.target.value)} placeholder="Or type your own, e.g. Equipment-013 TH-002 temp 99°C" aria-label="Alert text"></textarea>
+      <button class="send" disabled=${busy || !query.trim()} onClick=${() => send(query.trim(), null)}>${busy ? 'Running Stations 1-4…' : 'Send custom alert'}</button>
+      ${res && (res.error
+        ? html`<div class="result" style=${{ '--c': 'var(--fault)' }}>${res.error}</div>`
+        : html`<div class="result" style=${{ '--c': c }}>
+            <div class="sub mono" style=${{ marginBottom: '6px' }}>Sent: ${res.sent}</div>
+            <div class="head"><span class="act">${res.action}</span><span class="sub">${res.confidence_score}% · ${res.wall}s · ${res.equipment_name || 'no machine'}</span></div>
+            <div class="sub">${res.explanation}</div>
+            <pre>${res.response}</pre>
+          </div>`)}
+    </div>`;
+}
+
+// Worker chat: posts to the n8n "AlgoFactory - 4 Chat" workflow (Chat Trigger -> AI Agent -> tools -> pipeline)
+const CHAT_URL = '/webhook/a1f0c4e2-7b3d-4e5f-9a6b-1c2d3e4f5a6b/chat';
+const CHAT_SUGGESTIONS = ['How are my machines doing?', 'Equipment-001 humidity is 75%, should I worry?', 'Weird noise on Pump 2', 'Motor running hot'];
+
+// Minimal, safe formatting for agent replies: **bold** and "- " bullets (text is never injected as HTML)
+function FormattedText({ text }) {
+  return html`${text.split('\n').map((line, i) => {
+    const bullet = /^\s*[-*]\s+/.test(line);
+    const parts = line.replace(/^\s*[-*]\s+/, '').split(/\*\*(.+?)\*\*/g)
+      .map((p, j) => j % 2 ? html`<b key=${j}>${p}</b>` : p);
+    return html`<div key=${i}>${bullet ? '• ' : ''}${parts}</div>`;
+  })}`;
+}
+
+function Chat({ onActivity }) {
+  const [sessionId] = useState(() => 'dash-' + Math.random().toString(36).slice(2, 10));
+  const [msgs, setMsgs] = useState([{ role: 'bot', text: 'Hi! Tell me what you see on a machine, or ask: How are my machines doing?' }]);
+  const [input, setInput] = useState('');
+  const [busy, setBusy] = useState(false);
+  const logRef = React.useRef(null);
+  useEffect(() => { if (logRef.current) logRef.current.scrollTop = logRef.current.scrollHeight; }, [msgs, busy]);
+
+  const send = async text => {
+    const q = (text ?? input).trim();
+    if (!q || busy) return;
+    setInput(''); setBusy(true);
+    setMsgs(m => [...m, { role: 'user', text: q }]);
+    const t0 = performance.now();
+    try {
+      const o = await getJson(CHAT_URL.replace('/webhook', ''), { method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'sendMessage', sessionId, chatInput: q }) });
+      const tools = (o.intermediateSteps || []).map(s => `${s.action.tool}(${Object.values(s.action.toolInput || {}).join(', ')})`);
+      setMsgs(m => [...m, { role: 'bot', text: o.output || '(no reply)', tools, sec: ((performance.now() - t0) / 1000).toFixed(1) }]);
+      if (tools.some(t => t.startsWith('check_alert'))) onActivity();   // a check can change a machine's status
+    } catch (e) {
+      setMsgs(m => [...m, { role: 'bot', err: true, text: `Could not reach the assistant (${e.message}).` }]);
+    }
+    setBusy(false);
+  };
+
+  return html`
+    <div class="panel">
+      <h2>Ask AlgoFactory</h2>
+      <div class="chat-log" ref=${logRef} aria-live="polite">
+        ${msgs.map((m, i) => html`
+          <div key=${i} class=${'msg ' + m.role + (m.err ? ' err' : '')}>
+            ${m.role === 'bot' ? html`<${FormattedText} text=${m.text} />` : m.text}
+            ${m.tools && m.tools.length > 0 && html`<div class="tools">${m.tools.map((t, j) => html`<span class="tool" key=${j}>${t}</span>`)}</div>`}
+            ${m.sec && html`<div class="meta">${m.sec}s · n8n AI Agent</div>`}
+          </div>`)}
+        ${busy && html`<div class="typing">AlgoFactory is checking…</div>`}
+      </div>
+      ${msgs.length <= 1 && html`<div class="suggest">${CHAT_SUGGESTIONS.map(s => html`<button key=${s} onClick=${() => send(s)}>${s}</button>`)}</div>`}
+      <form class="chat-input" onSubmit=${e => { e.preventDefault(); send(); }}>
+        <input value=${input} onInput=${e => setInput(e.target.value)} placeholder="e.g. Weird noise on Pump 2" aria-label="Message the assistant" />
+        <button type="submit" disabled=${busy || !input.trim()}>Send</button>
+      </form>
+    </div>`;
+}
+
+function AlertsToday({ alerts, onOpen }) {
+  return html`
+    <div class="panel">
+      <h2>Alerts today (${alerts.length})</h2>
+      <div class="alerts">
+        ${alerts.length === 0 && html`<div class="empty">No alerts yet today.</div>`}
+        ${alerts.map(a => html`
+          <div class="alert" key=${a.id}>
+            <div class="t mono">${time(a.created_at)}</div>
+            <div>
+              <div><a href="#" style=${{ color: 'inherit' }} onClick=${e => { e.preventDefault(); a.equipment_id && onOpen(a.equipment_id); }}>${a.name || 'Unidentified'}</a> <span class="s">· ${a.input_source}</span></div>
+              <div class="s">${a.reason || a.summary}</div>
+            </div>
+            <div class="dec" style=${{ '--c': DECISION_COLOR[a.decision] }}>${a.decision}${a.confidence != null ? ` ${a.confidence}%` : ''}</div>
+          </div>`)}
+      </div>
+    </div>`;
+}
+
+function History({ id, onClose, onChanged }) {
+  const [h, setH] = useState(null);
+  const [err, setErr] = useState('');
+  const load = useCallback(() => getJson(`/floor/history?equipment_id=${encodeURIComponent(id)}&hours=24`).then(setH).catch(e => setErr(e.message)), [id]);
+  useEffect(() => { load(); }, [load]);
+  const reset = async () => {
+    await getJson('/floor/reset', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ equipment_id: id }) });
+    await load(); onChanged();
+  };
+  return html`
+    <div class="overlay" onClick=${onClose}>
+      <aside class="drawer" onClick=${e => e.stopPropagation()}>
+        ${err && html`<p class="err">${err}</p>`}
+        ${!h ? html`<div class="empty">Loading…</div>` : html`
+          <div class="top" style=${{ display: 'flex', justifyContent: 'space-between' }}><h3>${h.name}</h3><button class="btn" onClick=${onClose}>Close</button></div>
+          <div class="sub mono">${h.equipment_id} · ${h.type} · ${h.site}, ${h.line}</div>
+          <div class="kv">
+            <div>Status</div><div><${Badge} status=${h.status} /></div>
+            <div>Reason</div><div>${h.reason || '-'}</div>
+            <div>Last reading</div><div>${reading(h.last_reading) || '-'}</div>
+            <div>Updated</div><div>${ago(h.updated_at)}</div>
+            <div>Limits</div><div>${h.max_temp_c}°C · ${h.max_vibration_mm_s} mm/s</div>
+          </div>
+          ${h.status !== 'normal' && html`<div class="row-btns"><button class="btn danger" onClick=${reset}>Reset to normal</button></div>`}
+          <h2 style=${{ fontSize: '12px', color: 'var(--muted)', letterSpacing: '.1em', textTransform: 'uppercase' }}>Last ${h.hours} hours (${h.alerts.length})</h2>
+          ${h.alerts.length === 0 && html`<div class="empty">No alerts in this window.</div>`}
+          ${h.alerts.map(a => html`
+            <div class="alert" key=${a.id}>
+              <div class="t mono">${time(a.created_at)}</div>
+              <div><div>${a.summary}</div><div class="s">${a.input_source} · ${a.reason}</div></div>
+              <div class="dec" style=${{ '--c': DECISION_COLOR[a.decision] }}>${a.decision}${a.confidence != null ? ` ${a.confidence}%` : ''}</div>
+            </div>`)}
+        `}
+      </aside>
+    </div>`;
+}
+
+function App() {
+  const [equipment, setEquipment] = useState([]);
+  const [alerts, setAlerts] = useState([]);
+  const [site, setSite] = useState('All');
+  const [statusFilter, setStatusFilter] = useState(null);
+  const [open, setOpen] = useState(null);
+  const [updated, setUpdated] = useState(null);
+  const [err, setErr] = useState('');
+
+  const refresh = useCallback(async () => {
+    try {
+      const [e, a] = await Promise.all([getJson('/floor/equipment'), getJson('/floor/alerts?date=today')]);
+      setEquipment(e.equipment || []); setAlerts(a.alerts || []); setUpdated(new Date()); setErr('');
+    } catch (e) { setErr(`Could not reach the Floor API (${e.message}). Is n8n running?`); }
+  }, []);
+  useEffect(() => { refresh(); const t = setInterval(refresh, 15000); return () => clearInterval(t); }, [refresh]);
+
+  const sites = useMemo(() => ['All', ...new Set(equipment.map(m => m.site))], [equipment]);
+  const inSite = equipment.filter(m => site === 'All' || m.site === site);
+  const shown = inSite.filter(m => !statusFilter || m.status === statusFilter);
+  const counts = Object.fromEntries(STATUSES.map(s => [s, inSite.filter(m => m.status === s).length]));
+  const bySite = shown.reduce((acc, m) => { ((acc[m.site] ||= {})[m.line] ||= []).push(m); return acc; }, {});
+
+  return html`
+    <div class="wrap">
+      <header>
+        <div><div class="brand">Algo<span>Factory</span> Floor</div><div class="sub">Every alert rides the same line. Only real faults reach the floor.</div></div>
+        <div class="spacer"></div>
+        <div class="chips">${sites.map(s => html`<button key=${s} class=${'chip' + (s === site ? ' on' : '')} onClick=${() => setSite(s)}>${s}</button>`)}</div>
+        <div class="sub mono">${updated ? `Updated ${time(updated)} · auto every 15 s` : 'Loading…'}</div>
+      </header>
+      ${err && html`<p class="err">${err}</p>`}
+      <div class="tiles">
+        ${STATUSES.map(s => html`
+          <button key=${s} class=${'tile' + (statusFilter === s ? ' on' : '')} style=${{ '--c': COLOR[s] }} onClick=${() => setStatusFilter(statusFilter === s ? null : s)}>
+            <div class="n">${counts[s]}</div><div class="l">${s}</div>
+          </button>`)}
+      </div>
+      <div class="grid">
+        <div class="side">
+          <${UsMap} equipment=${equipment} site=${site} onSite=${setSite} />
+          <${AlertsToday} alerts=${alerts} onOpen=${setOpen} />
+        </div>
+        <div class="side">
+        <div class="panel machines-panel">
+          <h2>Machines${statusFilter ? ` · ${statusFilter}` : ''} (${shown.length})</h2>
+          ${shown.length === 0 && html`<div class="empty">No machines match this filter.</div>`}
+          ${Object.entries(bySite).map(([s, lines]) => html`
+            <section class="site" key=${s}>
+              <h3>${s}<small>${equipment.find(m => m.site === s)?.state}</small></h3>
+              ${Object.entries(lines).map(([ln, ms]) => html`
+                <div class="line-row" key=${ln}>
+                  <div class="line-label">${ln}</div>
+                  <div class="cards">${ms.map(m => html`<${MachineCard} key=${m.equipment_id} m=${m} onOpen=${setOpen} />`)}</div>
+                </div>`)}
+            </section>`)}
+        </div>
+          <${Chat} onActivity=${refresh} />
+          <${TestAlert} onDone=${refresh} />
+        </div>
+      </div>
+      ${open && html`<${History} id=${open} onClose=${() => setOpen(null)} onChanged=${refresh} />`}
+    </div>`;
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(html`<${App} />`);
+</script>
+</body>
+</html>

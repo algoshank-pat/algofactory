@@ -1,0 +1,690 @@
+{
+  "summary": {
+    "run_at": "2026-10-16T19:47:11.458Z",
+    "passed": 12,
+    "total": 12,
+    "latency_p50_sec": 1.71,
+    "latency_p95_sec": 2.33,
+    "latency_max_sec": 2.33,
+    "under_2s": 7,
+    "latency_by_path": {
+      "llm": {
+        "n": 6,
+        "p50": 2.23,
+        "max": 2.33
+      },
+      "template": {
+        "n": 6,
+        "p50": 1.33,
+        "max": 1.71
+      }
+    },
+    "note": "One warm-up call before the run is not counted. Latency is wall-clock from the client."
+  },
+  "runs": [
+    {
+      "run": 1,
+      "scenario_id": 1,
+      "scenario": "Happy path: thermal overload",
+      "query": "Equipment-001 TH-001 temp 85°C",
+      "timestamp": null,
+      "expected": {
+        "decision": "generate",
+        "range": [
+          80,
+          100
+        ]
+      },
+      "confidence_score": 94,
+      "decision": "generate",
+      "status": "ALERT",
+      "needs_clarification": false,
+      "layer_scores": {
+        "layer0": 49,
+        "layer1": 40,
+        "layer2": 5,
+        "layer3": 0,
+        "layer4": 0
+      },
+      "layer_reasons": {
+        "layer0": "Top rerank score 0.98",
+        "layer1": "85 >= max_temp_c 85",
+        "layer2": "Nothing scheduled explains the reading",
+        "layer3": "No baseline condition applies",
+        "layer4": "No recurring benign pattern"
+      },
+      "explanation": "85 >= max_temp_c 85. Nothing scheduled explains the reading.",
+      "sources": [
+        {
+          "id": "equipment-db-Equipment-001",
+          "source": "postgres.equipment",
+          "rerank_score": 0.981
+        },
+        {
+          "id": "anomaly_patterns-0",
+          "source": "anomaly_patterns.md",
+          "rerank_score": 0.781
+        },
+        {
+          "id": "playbooks-8",
+          "source": "playbooks.txt",
+          "rerank_score": 0.56
+        }
+      ],
+      "response": "Status: ALERT  \nDiagnosis: Motor Thermal Overload (TH-001) – temperature at max limit, risk of bearing friction or cooling failure  \nAction: Follow MP-TH-001 – reduce load, inspect bearing and cooling system, and if condition persists schedule bearing replacement  \nParts: Bearing kit (6208), ISO 32 turbine oil, thermal paste (lead time 2‑3 days for bearing, 1 day for lubricant)",
+      "response_source": "llm",
+      "latency_sec": 2.06,
+      "wall_sec": 2.24,
+      "pass": true
+    },
+    {
+      "run": 1,
+      "scenario_id": 2,
+      "scenario": "Semantic only, no equipment ID",
+      "query": "Motor running hot",
+      "timestamp": null,
+      "expected": {
+        "decision": "generate",
+        "range": [
+          60,
+          80
+        ]
+      },
+      "confidence_score": 75,
+      "decision": "generate",
+      "status": "ALERT",
+      "needs_clarification": false,
+      "layer_scores": {
+        "layer0": 50,
+        "layer1": 25,
+        "layer2": 0,
+        "layer3": 0,
+        "layer4": 0
+      },
+      "layer_reasons": {
+        "layer0": "Top rerank score 1.00",
+        "layer1": "No reading; specific symptom reported",
+        "layer2": "No active schedule",
+        "layer3": "No baseline condition applies",
+        "layer4": "No recurring benign pattern"
+      },
+      "explanation": "No reading; specific symptom reported. No active schedule.",
+      "sources": [
+        {
+          "id": "anomaly_patterns-0",
+          "source": "anomaly_patterns.md",
+          "rerank_score": 0.997
+        },
+        {
+          "id": "playbooks-8",
+          "source": "playbooks.txt",
+          "rerank_score": 0.992
+        },
+        {
+          "id": "playbooks-9",
+          "source": "playbooks.txt",
+          "rerank_score": 0.94
+        }
+      ],
+      "response": "Status: ALERT  \nDiagnosis: Motor thermal overload – temperature > max + 5 °C, likely bearing friction or cooling deficiency (TH‑001).  \nAction: Follow MP‑TH‑001 – reduce load, inspect cooling system, then check bearings; if hot/rough, schedule bearing replacement.  \nParts: Bearing kit (6208/6309) – 2‑3 days; ISO 32 lubricant – 1 day; thermal paste – 1 day.",
+      "response_source": "llm",
+      "latency_sec": 1.9,
+      "wall_sec": 2.3,
+      "pass": true
+    },
+    {
+      "run": 1,
+      "scenario_id": 3,
+      "scenario": "Sensor validates vibration anomaly",
+      "query": "Equipment-005 VB-001 vibration 8 mm/s",
+      "timestamp": null,
+      "expected": {
+        "decision": "generate",
+        "range": [
+          75,
+          100
+        ]
+      },
+      "confidence_score": 94,
+      "decision": "generate",
+      "status": "ALERT",
+      "needs_clarification": false,
+      "layer_scores": {
+        "layer0": 49,
+        "layer1": 40,
+        "layer2": 5,
+        "layer3": 0,
+        "layer4": 0
+      },
+      "layer_reasons": {
+        "layer0": "Top rerank score 0.98",
+        "layer1": "8 >= max_vibration_mm_s 8",
+        "layer2": "Nothing scheduled explains the reading",
+        "layer3": "No baseline condition applies",
+        "layer4": "No recurring benign pattern"
+      },
+      "explanation": "8 >= max_vibration_mm_s 8. Nothing scheduled explains the reading.",
+      "sources": [
+        {
+          "id": "equipment-db-Equipment-005",
+          "source": "postgres.equipment",
+          "rerank_score": 0.979
+        },
+        {
+          "id": "maintenance_schedule-28",
+          "source": "maintenance_schedule.json",
+          "rerank_score": 0.951
+        },
+        {
+          "id": "anomaly_patterns-3",
+          "source": "anomaly_patterns.md",
+          "rerank_score": 0.711
+        }
+      ],
+      "response": "Status: ALERT  \nDiagnosis: VB-001 – bearing wear causing vibration spike at max (8 mm/s)  \nAction: Immediate bearing replacement per VB-001 playbook; schedule replacement now and verify alignment after install  \nParts: Replacement bearing Piston‑Ring‑PR‑88 (lead time 2‑3 days), alignment shims, bearing puller tool (on‑site)",
+      "response_source": "llm",
+      "latency_sec": 2.05,
+      "wall_sec": 2.23,
+      "pass": true
+    },
+    {
+      "run": 1,
+      "scenario_id": 4,
+      "scenario": "Sensor contradicts anomaly",
+      "query": "Equipment-001 TH-002 temp 68°C",
+      "timestamp": null,
+      "expected": {
+        "decision": "escalate",
+        "range": [
+          0,
+          45
+        ]
+      },
+      "confidence_score": 35,
+      "decision": "escalate",
+      "status": "NEEDS INVESTIGATION",
+      "needs_clarification": false,
+      "layer_scores": {
+        "layer0": 35,
+        "layer1": 0,
+        "layer2": 0,
+        "layer3": 0,
+        "layer4": 0
+      },
+      "layer_reasons": {
+        "layer0": "Top rerank score 0.69",
+        "layer1": "68 below max_temp_c 85",
+        "layer2": "No active schedule",
+        "layer3": "No baseline condition applies",
+        "layer4": "No recurring benign pattern"
+      },
+      "explanation": "68 below max_temp_c 85. Evidence is not strong enough to diagnose.",
+      "sources": [
+        {
+          "id": "equipment-db-Equipment-001",
+          "source": "postgres.equipment",
+          "rerank_score": 0.694
+        },
+        {
+          "id": "anomaly_patterns-1",
+          "source": "anomaly_patterns.md",
+          "rerank_score": 0.374
+        },
+        {
+          "id": "anomaly_patterns-0",
+          "source": "anomaly_patterns.md",
+          "rerank_score": 0.221
+        }
+      ],
+      "response": "Status: NEEDS INVESTIGATION\nDiagnosis: 68 below max_temp_c 85. Evidence is not strong enough to confirm a fault (confidence 35%).\nAction: Verify the sensor reading on Equipment-001 and keep monitoring; escalate to a technician if it keeps rising.\nParts: None",
+      "response_source": "template",
+      "latency_sec": 1.05,
+      "wall_sec": 1.27,
+      "pass": true
+    },
+    {
+      "run": 1,
+      "scenario_id": 5,
+      "scenario": "Humidity false positive after cleaning",
+      "query": "Equipment-001 humidity 75%",
+      "timestamp": "2026-10-19T08:30",
+      "expected": {
+        "decision": "escalate",
+        "range": [
+          0,
+          10
+        ],
+        "status": "FALSE POSITIVE"
+      },
+      "confidence_score": 10,
+      "decision": "escalate",
+      "status": "FALSE POSITIVE",
+      "needs_clarification": false,
+      "layer_scores": {
+        "layer0": 50,
+        "layer1": 40,
+        "layer2": -40,
+        "layer3": -15,
+        "layer4": -5
+      },
+      "layer_reasons": {
+        "layer0": "Top rerank score 1.00",
+        "layer1": "75 >= humidity baseline + 15 65",
+        "layer2": "wet-wash cleaning Monday 06:00 (2h) explains humidity up to 75%",
+        "layer3": "Post-cleaning max expected 75%; reading 75% is normal",
+        "layer4": "Recurs every Monday with the cleaning"
+      },
+      "explanation": "wet-wash cleaning Monday 06:00 (2h) explains humidity up to 75%. Post-cleaning max expected 75%; reading 75% is normal.",
+      "sources": [
+        {
+          "id": "environmental_baselines-29",
+          "source": "environmental_baselines.json",
+          "rerank_score": 0.996
+        },
+        {
+          "id": "maintenance_schedule-27",
+          "source": "maintenance_schedule.json",
+          "rerank_score": 0.678
+        },
+        {
+          "id": "equipment-db-Equipment-001",
+          "source": "postgres.equipment",
+          "rerank_score": 0.051
+        }
+      ],
+      "response": "Status: FALSE POSITIVE\nDiagnosis: humidity 75 on Equipment-001 is explained by context. wet-wash cleaning Monday 06:00 (2h) explains humidity up to 75%. Post-cleaning max expected 75%; reading 75% is normal.\nAction: No action needed. Readings should return to baseline by 10:00.\nParts: None",
+      "response_source": "template",
+      "latency_sec": 1.14,
+      "wall_sec": 1.33,
+      "pass": true
+    },
+    {
+      "run": 1,
+      "scenario_id": 6,
+      "scenario": "Too vague, ask for clarification",
+      "query": "Weird noise from the floor",
+      "timestamp": null,
+      "expected": {
+        "decision": "escalate",
+        "range": [
+          0,
+          30
+        ],
+        "clarify": true
+      },
+      "confidence_score": 22,
+      "decision": "escalate",
+      "status": "NEEDS INVESTIGATION",
+      "needs_clarification": true,
+      "layer_scores": {
+        "layer0": 22,
+        "layer1": 0,
+        "layer2": 0,
+        "layer3": 0,
+        "layer4": 0
+      },
+      "layer_reasons": {
+        "layer0": "Top rerank score 0.44",
+        "layer1": "No reading; vague report",
+        "layer2": "No active schedule",
+        "layer3": "No baseline condition applies",
+        "layer4": "No recurring benign pattern"
+      },
+      "explanation": "Query is too vague: no equipment ID or sensor reading. Ask the operator which equipment and what was observed.",
+      "sources": [
+        {
+          "id": "anomaly_patterns-6",
+          "source": "anomaly_patterns.md",
+          "rerank_score": 0.445
+        },
+        {
+          "id": "anomaly_patterns-7",
+          "source": "anomaly_patterns.md",
+          "rerank_score": 0.014
+        },
+        {
+          "id": "environmental_baselines-29",
+          "source": "environmental_baselines.json",
+          "rerank_score": 0.002
+        }
+      ],
+      "response": "Status: NEEDS INVESTIGATION\nDiagnosis: Report is too vague to diagnose: no equipment ID or sensor reading.\nAction: Specify the equipment ID and the sensor reading or symptom observed.\nParts: None",
+      "response_source": "template",
+      "latency_sec": 1.32,
+      "wall_sec": 1.5,
+      "pass": true
+    },
+    {
+      "run": 2,
+      "scenario_id": 1,
+      "scenario": "Happy path: thermal overload",
+      "query": "Equipment-001 TH-001 temp 85°C",
+      "timestamp": null,
+      "expected": {
+        "decision": "generate",
+        "range": [
+          80,
+          100
+        ]
+      },
+      "confidence_score": 94,
+      "decision": "generate",
+      "status": "ALERT",
+      "needs_clarification": false,
+      "layer_scores": {
+        "layer0": 49,
+        "layer1": 40,
+        "layer2": 5,
+        "layer3": 0,
+        "layer4": 0
+      },
+      "layer_reasons": {
+        "layer0": "Top rerank score 0.98",
+        "layer1": "85 >= max_temp_c 85",
+        "layer2": "Nothing scheduled explains the reading",
+        "layer3": "No baseline condition applies",
+        "layer4": "No recurring benign pattern"
+      },
+      "explanation": "85 >= max_temp_c 85. Nothing scheduled explains the reading.",
+      "sources": [
+        {
+          "id": "equipment-db-Equipment-001",
+          "source": "postgres.equipment",
+          "rerank_score": 0.981
+        },
+        {
+          "id": "anomaly_patterns-0",
+          "source": "anomaly_patterns.md",
+          "rerank_score": 0.781
+        },
+        {
+          "id": "playbooks-8",
+          "source": "playbooks.txt",
+          "rerank_score": 0.56
+        }
+      ],
+      "response": "Status: ALERT  \nDiagnosis: Motor Thermal Overload (TH-001) – temperature at max limit, risk of bearing friction or cooling failure  \nAction: Follow MP-TH-001 – reduce load, inspect bearing and cooling system, and if condition persists schedule bearing replacement  \nParts: Bearing kit (6208), ISO 32 turbine oil, thermal paste (lead time 2‑3 days for bearing, 1 day for lubricant)",
+      "response_source": "llm",
+      "latency_sec": 2.15,
+      "wall_sec": 2.33,
+      "pass": true
+    },
+    {
+      "run": 2,
+      "scenario_id": 2,
+      "scenario": "Semantic only, no equipment ID",
+      "query": "Motor running hot",
+      "timestamp": null,
+      "expected": {
+        "decision": "generate",
+        "range": [
+          60,
+          80
+        ]
+      },
+      "confidence_score": 75,
+      "decision": "generate",
+      "status": "ALERT",
+      "needs_clarification": false,
+      "layer_scores": {
+        "layer0": 50,
+        "layer1": 25,
+        "layer2": 0,
+        "layer3": 0,
+        "layer4": 0
+      },
+      "layer_reasons": {
+        "layer0": "Top rerank score 1.00",
+        "layer1": "No reading; specific symptom reported",
+        "layer2": "No active schedule",
+        "layer3": "No baseline condition applies",
+        "layer4": "No recurring benign pattern"
+      },
+      "explanation": "No reading; specific symptom reported. No active schedule.",
+      "sources": [
+        {
+          "id": "anomaly_patterns-0",
+          "source": "anomaly_patterns.md",
+          "rerank_score": 0.997
+        },
+        {
+          "id": "playbooks-8",
+          "source": "playbooks.txt",
+          "rerank_score": 0.992
+        },
+        {
+          "id": "playbooks-9",
+          "source": "playbooks.txt",
+          "rerank_score": 0.94
+        }
+      ],
+      "response": "Status: ALERT  \nDiagnosis: Motor thermal overload – temperature > max + 5 °C, likely bearing friction or cooling deficiency (TH‑001).  \nAction: Follow MP‑TH‑001 – reduce load, inspect cooling system, then check bearings; if hot/rough, schedule bearing replacement.  \nParts: Bearing kit (6208/6309) – 2‑3 days; ISO 32 lubricant – 1 day; thermal paste – 1 day.",
+      "response_source": "llm",
+      "latency_sec": 1.87,
+      "wall_sec": 2.06,
+      "pass": true
+    },
+    {
+      "run": 2,
+      "scenario_id": 3,
+      "scenario": "Sensor validates vibration anomaly",
+      "query": "Equipment-005 VB-001 vibration 8 mm/s",
+      "timestamp": null,
+      "expected": {
+        "decision": "generate",
+        "range": [
+          75,
+          100
+        ]
+      },
+      "confidence_score": 94,
+      "decision": "generate",
+      "status": "ALERT",
+      "needs_clarification": false,
+      "layer_scores": {
+        "layer0": 49,
+        "layer1": 40,
+        "layer2": 5,
+        "layer3": 0,
+        "layer4": 0
+      },
+      "layer_reasons": {
+        "layer0": "Top rerank score 0.98",
+        "layer1": "8 >= max_vibration_mm_s 8",
+        "layer2": "Nothing scheduled explains the reading",
+        "layer3": "No baseline condition applies",
+        "layer4": "No recurring benign pattern"
+      },
+      "explanation": "8 >= max_vibration_mm_s 8. Nothing scheduled explains the reading.",
+      "sources": [
+        {
+          "id": "equipment-db-Equipment-005",
+          "source": "postgres.equipment",
+          "rerank_score": 0.979
+        },
+        {
+          "id": "maintenance_schedule-28",
+          "source": "maintenance_schedule.json",
+          "rerank_score": 0.951
+        },
+        {
+          "id": "anomaly_patterns-3",
+          "source": "anomaly_patterns.md",
+          "rerank_score": 0.711
+        }
+      ],
+      "response": "Status: ALERT  \nDiagnosis: VB-001 – bearing wear causing vibration spike at max (8 mm/s)  \nAction: Immediate bearing replacement per VB-001 playbook; schedule replacement now and verify alignment after install  \nParts: Replacement bearing Piston‑Ring‑PR‑88 (lead time 2‑3 days), alignment shims, bearing puller tool (on‑site)",
+      "response_source": "llm",
+      "latency_sec": 1.68,
+      "wall_sec": 1.84,
+      "pass": true
+    },
+    {
+      "run": 2,
+      "scenario_id": 4,
+      "scenario": "Sensor contradicts anomaly",
+      "query": "Equipment-001 TH-002 temp 68°C",
+      "timestamp": null,
+      "expected": {
+        "decision": "escalate",
+        "range": [
+          0,
+          45
+        ]
+      },
+      "confidence_score": 35,
+      "decision": "escalate",
+      "status": "NEEDS INVESTIGATION",
+      "needs_clarification": false,
+      "layer_scores": {
+        "layer0": 35,
+        "layer1": 0,
+        "layer2": 0,
+        "layer3": 0,
+        "layer4": 0
+      },
+      "layer_reasons": {
+        "layer0": "Top rerank score 0.69",
+        "layer1": "68 below max_temp_c 85",
+        "layer2": "No active schedule",
+        "layer3": "No baseline condition applies",
+        "layer4": "No recurring benign pattern"
+      },
+      "explanation": "68 below max_temp_c 85. Evidence is not strong enough to diagnose.",
+      "sources": [
+        {
+          "id": "equipment-db-Equipment-001",
+          "source": "postgres.equipment",
+          "rerank_score": 0.694
+        },
+        {
+          "id": "anomaly_patterns-1",
+          "source": "anomaly_patterns.md",
+          "rerank_score": 0.374
+        },
+        {
+          "id": "anomaly_patterns-0",
+          "source": "anomaly_patterns.md",
+          "rerank_score": 0.221
+        }
+      ],
+      "response": "Status: NEEDS INVESTIGATION\nDiagnosis: 68 below max_temp_c 85. Evidence is not strong enough to confirm a fault (confidence 35%).\nAction: Verify the sensor reading on Equipment-001 and keep monitoring; escalate to a technician if it keeps rising.\nParts: None",
+      "response_source": "template",
+      "latency_sec": 0.92,
+      "wall_sec": 1.1,
+      "pass": true
+    },
+    {
+      "run": 2,
+      "scenario_id": 5,
+      "scenario": "Humidity false positive after cleaning",
+      "query": "Equipment-001 humidity 75%",
+      "timestamp": "2026-10-19T08:30",
+      "expected": {
+        "decision": "escalate",
+        "range": [
+          0,
+          10
+        ],
+        "status": "FALSE POSITIVE"
+      },
+      "confidence_score": 10,
+      "decision": "escalate",
+      "status": "FALSE POSITIVE",
+      "needs_clarification": false,
+      "layer_scores": {
+        "layer0": 50,
+        "layer1": 40,
+        "layer2": -40,
+        "layer3": -15,
+        "layer4": -5
+      },
+      "layer_reasons": {
+        "layer0": "Top rerank score 1.00",
+        "layer1": "75 >= humidity baseline + 15 65",
+        "layer2": "wet-wash cleaning Monday 06:00 (2h) explains humidity up to 75%",
+        "layer3": "Post-cleaning max expected 75%; reading 75% is normal",
+        "layer4": "Recurs every Monday with the cleaning"
+      },
+      "explanation": "wet-wash cleaning Monday 06:00 (2h) explains humidity up to 75%. Post-cleaning max expected 75%; reading 75% is normal.",
+      "sources": [
+        {
+          "id": "environmental_baselines-29",
+          "source": "environmental_baselines.json",
+          "rerank_score": 0.996
+        },
+        {
+          "id": "maintenance_schedule-27",
+          "source": "maintenance_schedule.json",
+          "rerank_score": 0.678
+        },
+        {
+          "id": "equipment-db-Equipment-001",
+          "source": "postgres.equipment",
+          "rerank_score": 0.051
+        }
+      ],
+      "response": "Status: FALSE POSITIVE\nDiagnosis: humidity 75 on Equipment-001 is explained by context. wet-wash cleaning Monday 06:00 (2h) explains humidity up to 75%. Post-cleaning max expected 75%; reading 75% is normal.\nAction: No action needed. Readings should return to baseline by 10:00.\nParts: None",
+      "response_source": "template",
+      "latency_sec": 1.53,
+      "wall_sec": 1.71,
+      "pass": true
+    },
+    {
+      "run": 2,
+      "scenario_id": 6,
+      "scenario": "Too vague, ask for clarification",
+      "query": "Weird noise from the floor",
+      "timestamp": null,
+      "expected": {
+        "decision": "escalate",
+        "range": [
+          0,
+          30
+        ],
+        "clarify": true
+      },
+      "confidence_score": 22,
+      "decision": "escalate",
+      "status": "NEEDS INVESTIGATION",
+      "needs_clarification": true,
+      "layer_scores": {
+        "layer0": 22,
+        "layer1": 0,
+        "layer2": 0,
+        "layer3": 0,
+        "layer4": 0
+      },
+      "layer_reasons": {
+        "layer0": "Top rerank score 0.44",
+        "layer1": "No reading; vague report",
+        "layer2": "No active schedule",
+        "layer3": "No baseline condition applies",
+        "layer4": "No recurring benign pattern"
+      },
+      "explanation": "Query is too vague: no equipment ID or sensor reading. Ask the operator which equipment and what was observed.",
+      "sources": [
+        {
+          "id": "anomaly_patterns-6",
+          "source": "anomaly_patterns.md",
+          "rerank_score": 0.445
+        },
+        {
+          "id": "anomaly_patterns-7",
+          "source": "anomaly_patterns.md",
+          "rerank_score": 0.014
+        },
+        {
+          "id": "environmental_baselines-29",
+          "source": "environmental_baselines.json",
+          "rerank_score": 0.002
+        }
+      ],
+      "response": "Status: NEEDS INVESTIGATION\nDiagnosis: Report is too vague to diagnose: no equipment ID or sensor reading.\nAction: Specify the equipment ID and the sensor reading or symptom observed.\nParts: None",
+      "response_source": "template",
+      "latency_sec": 1.29,
+      "wall_sec": 1.44,
+      "pass": true
+    }
+  ]
+}
