@@ -4,12 +4,17 @@ Context-aware equipment anomaly detection, built in n8n for the Maven "Mastering
 
 Every sensor alert and worker chat message runs through four stations: **Understand** (Postgres equipment lookup), **Find evidence** (Pinecone + BM25, bge rerank), **Check context** (5-layer validation: evidence, sensors, schedule, baseline, history) and **Decide** (ACT with an LLM action plan, HOLD with an explanation, or ESCALATE). Example: 75% humidity on Motor 1 right after a scheduled wet-wash is held as a false positive instead of raising an alarm.
 
+![AlgoFactory floor dashboard: status tiles, USA plant map, machine board, alerts and the Ask AlgoFactory chat](docs/dashboard.webp)
+
+*The floor dashboard, served by n8n at `/webhook/floor`: status counts, the 7 plants on a USA map (dot color = worst status), machines by site and line, today's alerts, and the Ask AlgoFactory chat.*
+
 **Start here:** [AlgoFactory-STATUS.md](AlgoFactory-STATUS.md) covers the architecture, how to run it, the test results, the demo script and what is left.
 
 | Path | What |
 |---|---|
 | `AlgoFactory-workflow.json` | All 6 n8n workflows (import into n8n 2.x) |
 | `dashboard/AlgoFactory-dashboard.html` | Floor dashboard: USA plant map, machines, alerts, chat, test alerts |
+| `docs/dashboard.webp` | Dashboard screenshot |
 | `build/` | Workflow builder, Code-node scripts, SQL, chatbot prompt, test runner, Postgres dump |
 | `n8n-node-code.md` | Every node's code and configuration, tables and endpoints |
 | `test_results.json` | 6 sensor scenarios + 4 chatbot tests, 2 runs each: 20/20 pass |
