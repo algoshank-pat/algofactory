@@ -9,12 +9,14 @@ Every sensor alert and worker chat message runs through four stations: **Underst
 *The floor dashboard, served by n8n at `/webhook/floor`: status counts, the 7 plants on a USA map (dot color = worst status), machines by site and line, today's alerts, and the Ask AlgoFactory chat.*
 
 **Start here:** [AlgoFactory-STATUS.md](AlgoFactory-STATUS.md) covers the architecture, how to run it, the test results, the demo script and what is left.
+**Deploy or roll back:** [DEPLOY.md](DEPLOY.md) covers setup from scratch, deploying a change, backups, and rollback (one workflow, a git commit, the database, Pinecone, or the n8n container).
 
 | Path | What |
 |---|---|
 | `AlgoFactory-workflow.json` | All 6 n8n workflows (import into n8n 2.x) |
 | `dashboard/AlgoFactory-dashboard.html` | Floor dashboard: USA plant map, machines, alerts, chat, test alerts |
 | `docs/dashboard.webp` | Dashboard screenshot |
+| `DEPLOY.md` | Deploy from scratch, deploy a change, back up, roll back |
 | `build/` | Workflow builder, Code-node scripts, SQL, chatbot prompt, test runner, Postgres dump |
 | `n8n-node-code.md` | Every node's code and configuration, tables and endpoints |
 | `test_results.json` | 6 sensor scenarios + 4 chatbot tests, 2 runs each: 20/20 pass |

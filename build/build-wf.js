@@ -3,7 +3,8 @@
 // Then import each file with: docker exec n8n n8n import:workflow --input=... (see AlgoFactory-STATUS.md)
 const fs = require('fs'), crypto = require('crypto');
 const code = f => fs.readFileSync(`${__dirname}/nodes/${f}`, 'utf8');
-const HOST = 'algomanfactory-uscfsbs.svc.aped-4627-b74a.pinecone.io';
+// Pinecone index host: set PINECONE_HOST for your own index (default = the original algomanfactory index)
+const HOST = process.env.PINECONE_HOST || 'algomanfactory-uscfsbs.svc.aped-4627-b74a.pinecone.io';
 // Keys come from container env vars (--env-file Update.env), so the workflow JSON holds no secrets
 const FW = [{ name: 'Authorization', value: "={{ 'Bearer ' + $env.FIREWORKS_API_KEY }}" }];
 const PC = [{ name: 'Api-Key', value: '={{ $env.PINECONE_API_KEY }}' }, { name: 'X-Pinecone-API-Version', value: '2025-04' }];
@@ -132,7 +133,7 @@ chat.connections = {
 fs.writeFileSync(`${__dirname}/out/wf-chat.json`, JSON.stringify(chat, null, 2));
 // Floor API: the dashboard page plus JSON endpoints, all served by n8n on one origin
 const FLOOR_SQL = require(`${__dirname}/sql-floor.js`);
-const DASHBOARD_HTML = fs.readFileSync('C:/Maven/Projects/Week2/dashboard/AlgoFactory-dashboard.html', 'utf8');
+const DASHBOARD_HTML = fs.readFileSync(`${__dirname}/../dashboard/AlgoFactory-dashboard.html`, 'utf8');
 const floorNodes = [], floorConn = {};
 function endpoint(key, method, path, y, sql, params) {
   const hook = `${key}: ${method} /${path}`, db = `${key}: Query`, out = `${key}: Respond`;

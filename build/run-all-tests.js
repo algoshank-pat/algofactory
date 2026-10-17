@@ -1,5 +1,5 @@
 // Runs the 6 sensor scenarios (webhook) and 4 chatbot tests (chat endpoint), 2 runs each.
-// Writes C:/Maven/Projects/Week2/test_results.json
+// Writes test_results.json in the repo root
 const fs = require('fs');
 const WEBHOOK = 'http://localhost:5678/webhook/anomaly-check';
 const CHAT = 'http://localhost:5678/webhook/a1f0c4e2-7b3d-4e5f-9a6b-1c2d3e4f5a6b/chat';
@@ -81,7 +81,7 @@ function judgeChat(t, steps, reply) {
     environment: { plant_clock: '2026-10-19T08:30 (PLANT_CLOCK, Monday after the 06:00-08:00 wet-wash)', model: 'Fireworks gpt-oss-120b (agent + answers)', embeddings: 'Fireworks qwen3-embedding-8b (1024)', rerank: 'Pinecone bge-reranker-v2-m3' },
     note: 'One warm-up call before the sensor runs is not counted. Latency is wall-clock from the client.'
   };
-  fs.writeFileSync('C:/Maven/Projects/Week2/test_results.json', JSON.stringify({ project: 'AlgoFactory', summary, tests }, null, 2));
+  fs.writeFileSync(`${__dirname}/../test_results.json`, JSON.stringify({ project: 'AlgoFactory', summary, tests }, null, 2));
   console.log(JSON.stringify(summary, null, 1));
   console.log('STARTED_AT=' + startedAt);
 })().catch(e => { console.error(e); process.exit(1); });

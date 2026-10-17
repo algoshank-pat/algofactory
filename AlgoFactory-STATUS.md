@@ -182,6 +182,8 @@ Run it with `docker exec -i algoman-pg psql -U algoman -d algoman`.
 
 ## Rebuild and redeploy
 
+Full step-by-step setup, change deployment, backups and rollback: **[DEPLOY.md](DEPLOY.md)**. Short version:
+
 All sources are in `build/`:
 - **`build-wf.js`:** generates the 6 workflows.
 - **`nodes/`:** Code-node JavaScript.
@@ -209,6 +211,7 @@ On Git Bash, prefix the docker commands with `MSYS_NO_PATHCONV=1`. The first req
 |---|---|
 | `AlgoFactory-STATUS.md` | This file: status, how to run, handoff |
 | `AlgoFactory-workflow.json` | All 6 n8n workflows (submission artifact) |
+| `DEPLOY.md` | Deploy, back up and roll back |
 | `test_results.json` | 10 tests x 2 runs (submission evidence) |
 | `AlgoFactory-results.json` | Earlier sensor-only run (S1-S6); superseded by test_results.json |
 | `n8n-node-code.md` | Every node's code and config, tables, endpoints, chatbot |

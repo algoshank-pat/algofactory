@@ -27,3 +27,7 @@ Week2_Problem_Analysis.md
 .DS_Store
 Thumbs.db
 desktop.ini
+
+# Local backups (see DEPLOY.md section 3)
+backups/
+wf-rollback.json
