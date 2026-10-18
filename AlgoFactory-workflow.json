@@ -363,7 +363,7 @@
     }
   },
   {
-    "updatedAt": "2026-10-17T01:12:13.000Z",
+    "updatedAt": "2026-10-18T14:31:15.000Z",
     "createdAt": "2026-10-16T19:32:25.647Z",
     "id": "5c7a1f0e2d3b4a69",
     "name": "AlgoFactory - 3 Pipeline",
@@ -372,7 +372,7 @@
     "isArchived": false,
     "nodes": [
       {
-        "id": "ce27dc2f-2833-475b-86f8-15628254cca0",
+        "id": "e8922ebd-782f-4f7e-b15d-1c2a1a8c8e03",
         "name": "Pipeline Input",
         "type": "n8n-nodes-base.executeWorkflowTrigger",
         "typeVersion": 1.1,
@@ -409,7 +409,7 @@
         }
       },
       {
-        "id": "bfd7e84e-78a5-46ed-bf55-a89348bf2790",
+        "id": "a684b1c8-762c-4913-b9e1-c26d094d3582",
         "name": "9. Parse Intent",
         "type": "n8n-nodes-base.code",
         "typeVersion": 2,
@@ -422,7 +422,7 @@
         }
       },
       {
-        "id": "31a4f1b6-9ae2-4c38-bff2-3512f4e6b0c0",
+        "id": "b09312d6-be97-4e6f-a494-c8d655ebc39f",
         "name": "9b. Lookup Equipment",
         "type": "n8n-nodes-base.postgres",
         "typeVersion": 2.5,
@@ -446,7 +446,7 @@
         }
       },
       {
-        "id": "c939c14b-8c46-498d-8a5d-2a76eb8f7f9d",
+        "id": "9c987b78-0ed1-46a7-8ab5-57aa1f83991b",
         "name": "10a. Embed Query",
         "type": "n8n-nodes-base.httpRequest",
         "typeVersion": 4.2,
@@ -474,7 +474,7 @@
         }
       },
       {
-        "id": "06252911-dfbd-48f1-a2dc-90a393123817",
+        "id": "f61f7048-b80a-4aa8-828f-5b1963ab09ef",
         "name": "10b. Pinecone Query",
         "type": "n8n-nodes-base.httpRequest",
         "typeVersion": 4.2,
@@ -506,7 +506,7 @@
         }
       },
       {
-        "id": "ddf9ed07-45c5-4290-8ae9-0602ffc82d16",
+        "id": "6dd5f63f-69ae-4a8e-9e5b-2a6506fc9834",
         "name": "11. BM25 Search",
         "type": "n8n-nodes-base.code",
         "typeVersion": 2,
@@ -519,7 +519,7 @@
         }
       },
       {
-        "id": "f31d9a12-eb11-4116-9b6f-07273a3a97cc",
+        "id": "1b83f497-0605-4ed9-b1f2-dc9a29d3f010",
         "name": "12. Merge Results",
         "type": "n8n-nodes-base.code",
         "typeVersion": 2,
@@ -532,7 +532,7 @@
         }
       },
       {
-        "id": "68051ba3-fd37-4297-932c-a47062bd31e3",
+        "id": "68ca3602-9082-4c73-bcf0-495d6d0515da",
         "name": "13. Rerank",
         "type": "n8n-nodes-base.httpRequest",
         "typeVersion": 4.2,
@@ -564,7 +564,7 @@
         }
       },
       {
-        "id": "2d75864f-9b8a-4dc8-8787-0e960ccc4c8c",
+        "id": "7aa39454-9c36-48a1-8b09-e0d0786e0422",
         "name": "14. Validate",
         "type": "n8n-nodes-base.code",
         "typeVersion": 2,
@@ -577,7 +577,7 @@
         }
       },
       {
-        "id": "b0a6d1af-4446-467c-bfa7-5d24af952056",
+        "id": "3372f8bd-9e77-4cee-9c71-fab94ca89240",
         "name": "14t. Trace Evidence & Context",
         "type": "n8n-nodes-base.postgres",
         "typeVersion": 2.5,
@@ -601,7 +601,7 @@
         }
       },
       {
-        "id": "0a62ff43-851a-47f9-9abe-96a3be8495b4",
+        "id": "0c75ddda-35ca-459b-a549-5d214fc01395",
         "name": "14b. Route",
         "type": "n8n-nodes-base.if",
         "typeVersion": 2.2,
@@ -619,7 +619,7 @@
             },
             "conditions": [
               {
-                "id": "1a640abe-7322-4fca-93f9-b35395373e15",
+                "id": "089ace83-b6b6-4ce2-9527-27c9460fca0b",
                 "leftValue": "={{ $('14. Validate').first().json.decision }}",
                 "rightValue": "generate",
                 "operator": {
@@ -634,7 +634,7 @@
         }
       },
       {
-        "id": "2960c14e-65d8-4be7-b710-d09262ad7220",
+        "id": "1bc50aa1-a156-4341-80a1-47500c7e37a8",
         "name": "15. Build Prompt",
         "type": "n8n-nodes-base.code",
         "typeVersion": 2,
@@ -643,11 +643,11 @@
           -120
         ],
         "parameters": {
-          "jsCode": "// Node 15: Build the LLM request (status and confidence are decided by Node 14, not the LLM)\r\n\r\nconst v = $('14. Validate').first().json;\r\nconst context = (v.topChunks || []).map((c, i) => `[${i + 1}] (${c.metadata?.source_doc}) ${c.text}`).join('\\n\\n');\r\n\r\nconst task = {\r\n  'ALERT': 'Give a confident diagnosis and recommended action. Name the playbook procedure ID and any parts with lead time if the context lists them.',\r\n  'FALSE POSITIVE': 'Explain that the alert is a false positive and why, using the validation findings. State that no action is needed and when readings should return to normal.',\r\n  'NEEDS INVESTIGATION': v.needs_clarification\r\n    ? 'Say the report is too vague to diagnose. Ask for the equipment ID and the sensor reading or symptom observed.'\r\n    : 'Say the evidence is not strong enough to confirm a fault. Suggest what to check next.'\r\n}[v.status];\r\n\r\nconst prompt = `You are AlgoFactory, a manufacturing maintenance assistant. Use ONLY the context and validation findings below. Do not invent values.\r\n\r\nCONTEXT:\r\n${context || '(no relevant documents)'}\r\n\r\nALERT: ${v.raw_query}\r\nEQUIPMENT: ${v.equipment_id || 'unknown'} | SENSOR: ${v.sensor_type || 'unknown'} ${v.sensor_value ?? ''}\r\nSTATUS (decided by validation): ${v.status}\r\nCONFIDENCE: ${v.confidence}%\r\nVALIDATION FINDINGS: ${v.explanation}\r\n\r\nTASK: ${task}\r\n\r\nReply in at most 4 short lines:\r\nStatus: ${v.status}\r\nDiagnosis: ...\r\nAction: ...\r\nParts: ... (or \"None\")`;\r\n\r\nreturn [{\r\n  json: {\r\n    llm_body: {\r\n      model: 'accounts/fireworks/models/gpt-oss-120b',\r\n      temperature: 0,\r\n      max_tokens: 200,             // ALERT answers stop naturally at ~150 tokens\r\n      reasoning_effort: 'low',\r\n      messages: [{ role: 'user', content: prompt }]\r\n    }\r\n  }\r\n}];\r\n"
+          "jsCode": "// Node 15: Build the LLM request (status and confidence are decided by Node 14, not the LLM)\r\n\r\nconst v = $('14. Validate').first().json;\r\nconst context = (v.topChunks || []).map((c, i) => `[${i + 1}] (${c.metadata?.source_doc}) ${c.text}`).join('\\n\\n');\r\n\r\nconst task = {\r\n  'ALERT': 'Give a confident diagnosis and recommended action. Name the playbook procedure ID and any parts with lead time if the context lists them.',\r\n  'FALSE POSITIVE': 'Explain that the alert is a false positive and why, using the validation findings. State that no action is needed and when readings should return to normal.',\r\n  'NEEDS INVESTIGATION': v.needs_clarification\r\n    ? 'Say the report is too vague to diagnose. Ask for the equipment ID and the sensor reading or symptom observed.'\r\n    : 'Say the evidence is not strong enough to confirm a fault. Suggest what to check next.'\r\n}[v.status];\r\n\r\nconst prompt = `You are AlgoFactory, a manufacturing maintenance assistant. Use ONLY the context and validation findings below. Do not invent values.\r\n\r\nCONTEXT:\r\n${context || '(no relevant documents)'}\r\n\r\nALERT: ${v.raw_query}\r\nEQUIPMENT: ${v.equipment_id || 'unknown'} | SENSOR: ${v.sensor_type || 'unknown'} ${v.sensor_value ?? ''}\r\nSTATUS (decided by validation): ${v.status}\r\nCONFIDENCE: ${v.confidence}%\r\nVALIDATION FINDINGS: ${v.explanation}\r\n\r\nTASK: ${task}\r\n\r\nReply in at most 4 short lines:\r\nStatus: ${v.status}\r\nDiagnosis: ...\r\nAction: ...\r\nParts: ... (or \"None\")`;\r\n\r\nreturn [{\r\n  json: {\r\n    llm_body: {\r\n      model: 'accounts/fireworks/models/gpt-oss-120b',\r\n      temperature: 0,\r\n      max_tokens: 400,             // reasoning tokens count against the cap; 200 cut off some answers mid-line\r\n      reasoning_effort: 'low',\r\n      messages: [{ role: 'user', content: prompt }]\r\n    }\r\n  }\r\n}];\r\n"
         }
       },
       {
-        "id": "19b5b2a4-2688-4a48-82b0-1a8b03cd0d87",
+        "id": "e47311e5-69b0-4884-9b62-a2399f1b0f67",
         "name": "16. Fireworks LLM",
         "type": "n8n-nodes-base.httpRequest",
         "typeVersion": 4.2,
@@ -675,7 +675,7 @@
         }
       },
       {
-        "id": "f0587e14-3d20-42ae-9522-22d2b91df68c",
+        "id": "f87cf387-4db3-4b1b-846b-09d8694a315f",
         "name": "15b. Template Response",
         "type": "n8n-nodes-base.code",
         "typeVersion": 2,
@@ -688,7 +688,7 @@
         }
       },
       {
-        "id": "96857b8a-6464-442e-bce5-ee148b30cfd0",
+        "id": "78023ff0-4716-45e7-9068-be63d1a8da20",
         "name": "17. Format Response",
         "type": "n8n-nodes-base.code",
         "typeVersion": 2,
@@ -697,11 +697,11 @@
           0
         ],
         "parameters": {
-          "jsCode": "// Node 17: Format the final response\r\n// Inputs: $input -> Node 16 Fireworks response, $('14. Validate') -> scores, $('9. Parse Intent') -> start time\r\n\r\nconst v = $('14. Validate').first().json;\r\nconst started = $('9. Parse Intent').first().json.started_at;\r\nconst llm = $input.first().json;\r\nconst ACTION = { 'ALERT': 'ACT', 'FALSE POSITIVE': 'HOLD', 'NEEDS INVESTIGATION': 'ESCALATE' };\r\nconst text = llm.choices?.[0]?.message?.content?.trim() || 'Unable to generate response.';\r\n\r\nreturn [{\r\n  json: {\r\n    query: v.raw_query,\r\n    equipment_id: v.equipment_id,\r\n    equipment_name: v.equipment_spec?.name || null,\r\n    source: $('9. Parse Intent').first().json.source,\r\n    action: ACTION[v.status],\r\n    sensor_type: v.sensor_type,\r\n    sensor_value: v.sensor_value,\r\n    confidence_score: Math.round(v.confidence),\r\n    decision: v.decision,\r\n    status: v.status,\r\n    needs_clarification: v.needs_clarification,\r\n    explanation: v.explanation,\r\n    layer_scores: v.layerScores,\r\n    layer_reasons: v.reasons,\r\n    sources: v.topChunks.map(c => ({ id: c.id, source: c.metadata?.source_doc, rerank_score: +c.rerank_score.toFixed(3) })),\r\n    response: text,\r\n    response_source: llm.source || 'llm',\r\n    model: llm.source === 'template' ? null : (llm.model || 'accounts/fireworks/models/gpt-oss-120b'),\r\n    run_id: v.run_id,\r\n    t14_end: v.t_end,\r\n    latency_sec: +((Date.now() - started) / 1000).toFixed(2),\r\n    timestamp: new Date().toISOString()\r\n  }\r\n}];\r\n"
+          "jsCode": "// Node 17: Format the final response\r\n// Inputs: $input -> Node 16 Fireworks response, $('14. Validate') -> scores, $('9. Parse Intent') -> start time\r\n\r\nconst v = $('14. Validate').first().json;\r\nconst started = $('9. Parse Intent').first().json.started_at;\r\nconst llm = $input.first().json;\r\nconst ACTION = { 'ALERT': 'ACT', 'FALSE POSITIVE': 'HOLD', 'NEEDS INVESTIGATION': 'ESCALATE' };\r\nconst answer = llm.choices?.[0]?.message?.content?.trim() || 'Unable to generate response.';\r\n// Citations: ACT answers end with a deterministic Sources line built from the chunks the LLM was given\r\n// (same order as the [n] labels in the Node 15 prompt), so the citation itself cannot be hallucinated.\r\nconst citations = v.topChunks.map((c, i) => ({ n: i + 1, source: c.metadata?.source_doc, chunk_id: c.id, rerank_score: +(+c.rerank_score).toFixed(3) }));\r\nconst text = ACTION[v.status] === 'ACT' && citations.length\r\n  ? `${answer}\r\nSources: ${citations.map(c => `[${c.n}] ${c.source} (${c.chunk_id})`).join(' · ')}`\r\n  : answer;\r\n\r\nreturn [{\r\n  json: {\r\n    query: v.raw_query,\r\n    equipment_id: v.equipment_id,\r\n    equipment_name: v.equipment_spec?.name || null,\r\n    source: $('9. Parse Intent').first().json.source,\r\n    action: ACTION[v.status],\r\n    sensor_type: v.sensor_type,\r\n    sensor_value: v.sensor_value,\r\n    confidence_score: Math.round(v.confidence),\r\n    decision: v.decision,\r\n    status: v.status,\r\n    needs_clarification: v.needs_clarification,\r\n    explanation: v.explanation,\r\n    layer_scores: v.layerScores,\r\n    layer_reasons: v.reasons,\r\n    sources: v.topChunks.map(c => ({ id: c.id, source: c.metadata?.source_doc, rerank_score: +c.rerank_score.toFixed(3) })),\r\n    response: text,\r\n    citations: ACTION[v.status] === 'ACT' ? citations : [],\r\n    response_source: llm.source || 'llm',\r\n    model: llm.source === 'template' ? null : (llm.model || 'accounts/fireworks/models/gpt-oss-120b'),\r\n    run_id: v.run_id,\r\n    t14_end: v.t_end,\r\n    latency_sec: +((Date.now() - started) / 1000).toFixed(2),\r\n    timestamp: new Date().toISOString()\r\n  }\r\n}];\r\n"
         }
       },
       {
-        "id": "c703a122-e65b-4565-adbe-77b71e682ca9",
+        "id": "a336afd6-3c38-436e-b6c3-42d07011a370",
         "name": "18a. Log & Update Status",
         "type": "n8n-nodes-base.postgres",
         "typeVersion": 2.5,
@@ -725,7 +725,7 @@
         }
       },
       {
-        "id": "f45d6fa8-5219-46f8-9871-21204a30bc71",
+        "id": "a4021185-230f-49ec-8454-91d1632e0c1c",
         "name": "19. Return Result",
         "type": "n8n-nodes-base.code",
         "typeVersion": 2,
@@ -930,9 +930,9 @@
     "meta": null,
     "nodeGroups": [],
     "pinData": {},
-    "versionId": "067a67de-457a-4304-9cbc-fd970cc0c767",
-    "activeVersionId": "067a67de-457a-4304-9cbc-fd970cc0c767",
-    "versionCounter": 4,
+    "versionId": "0131cba3-b42b-44c8-b48c-7a25ff635b2e",
+    "activeVersionId": "0131cba3-b42b-44c8-b48c-7a25ff635b2e",
+    "versionCounter": 5,
     "triggerCount": 0,
     "sourceWorkflowId": null,
     "tags": [],

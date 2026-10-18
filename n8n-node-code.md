@@ -37,6 +37,8 @@
 | Node 15: max_tokens 200 | ALERT answers stop at ~150 tokens; the cap guards against runaway output. |
 | Node 14b + 15b: escalations use a template, no LLM | Node 14 already decides them; saves ~1 s and cannot hallucinate. |
 | Node 15: max_tokens 200 | ALERT answers stop at ~150 tokens; the cap guards against runaway output. |
+| Node 14b + 15b: escalations use a template, no LLM | Node 14 already decides them; saves ~1 s and cannot hallucinate. |
+| Node 15: max_tokens 200 | ALERT answers stop at ~150 tokens; the cap guards against runaway output. |
 | Node 9b: equipment specs from Postgres; equipment.csv no longer chunked into Pinecone | One source of truth for machine data (31 vectors, was 51). Node 12 adds the row as a context chunk. |
 | Node 14b + 15b: escalations use a template, no LLM | Node 14 already decides them; saves ~1 s and cannot hallucinate. |
 | Node 15: max_tokens 200 | ALERT answers stop at ~150 tokens; the cap guards against runaway output. |
@@ -633,7 +635,7 @@ return [{
     llm_body: {
       model: 'accounts/fireworks/models/gpt-oss-120b',
       temperature: 0,
-      max_tokens: 200,             // ALERT answers stop naturally at ~150 tokens
+      max_tokens: 400,             // reasoning tokens count against the cap; 200 cut off some answers mid-line
       reasoning_effort: 'low',
       messages: [{ role: 'user', content: prompt }]
     }
@@ -694,7 +696,14 @@ const v = $('14. Validate').first().json;
 const started = $('9. Parse Intent').first().json.started_at;
 const llm = $input.first().json;
 const ACTION = { 'ALERT': 'ACT', 'FALSE POSITIVE': 'HOLD', 'NEEDS INVESTIGATION': 'ESCALATE' };
-const text = llm.choices?.[0]?.message?.content?.trim() || 'Unable to generate response.';
+const answer = llm.choices?.[0]?.message?.content?.trim() || 'Unable to generate response.';
+// Citations: ACT answers end with a deterministic Sources line built from the chunks the LLM was given
+// (same order as the [n] labels in the Node 15 prompt), so the citation itself cannot be hallucinated.
+const citations = v.topChunks.map((c, i) => ({ n: i + 1, source: c.metadata?.source_doc, chunk_id: c.id, rerank_score: +(+c.rerank_score).toFixed(3) }));
+const text = ACTION[v.status] === 'ACT' && citations.length
+  ? `${answer}
+Sources: ${citations.map(c => `[${c.n}] ${c.source} (${c.chunk_id})`).join(' · ')}`
+  : answer;
 
 return [{
   json: {
@@ -714,6 +723,7 @@ return [{
     layer_reasons: v.reasons,
     sources: v.topChunks.map(c => ({ id: c.id, source: c.metadata?.source_doc, rerank_score: +c.rerank_score.toFixed(3) })),
     response: text,
+    citations: ACTION[v.status] === 'ACT' ? citations : [],
     response_source: llm.source || 'llm',
     model: llm.source === 'template' ? null : (llm.model || 'accounts/fireworks/models/gpt-oss-120b'),
     run_id: v.run_id,

@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict NbcNHNmXGi0FS92W0bqKO2pi1P9ZX4Bcdl2gkYam2ogi0OMEOccK73t7OVFYMsS
+\restrict rVZ32wjAm5QcvKQkvbnLCcnba994rbDTUOyqWDfhFyj7iL1HqTLqGt9v1bUqRhD
 
 -- Dumped from database version 16.14
 -- Dumped by pg_dump version 16.14
@@ -384,7 +384,6 @@ ALTER TABLE ONLY public.alert_log ALTER COLUMN id SET DEFAULT nextval('public.al
 --
 
 COPY public.alert_log (id, equipment_id, input_source, summary, decision, confidence, reason, created_at, run_id) FROM stdin;
-136	Equipment-001	chat	Equipment-001 humidity is 75%, should I worry?	HOLD	10	wet-wash cleaning Monday 06:00 (2h) explains humidity up to 75%. Post-cleaning max expected 75%; reading 75% is normal.	2026-10-17 01:18:29.392388+00	188d8d32-87e5-4b56-b1ae-cc0f56e21c31
 \.
 
 
@@ -431,36 +430,36 @@ Equipment-027	Compressor 6	compressor	Plant-F	Floor-2-North	110	8.0	Piston-Ring-
 --
 
 COPY public.equipment_status (equipment_id, status, reason, last_reading, updated_at) FROM stdin;
-Equipment-008	normal	Initial state	\N	2026-10-17 01:17:49.568825+00
-Equipment-005	normal	Initial state	\N	2026-10-17 01:17:49.568825+00
-Equipment-029	normal	Initial state	\N	2026-10-17 01:17:49.568825+00
-Equipment-013	normal	Initial state	\N	2026-10-17 01:17:49.568825+00
-Equipment-002	normal	Initial state	\N	2026-10-17 01:17:49.568825+00
-Equipment-003	normal	Initial state	\N	2026-10-17 01:17:49.568825+00
-Equipment-006	normal	Initial state	\N	2026-10-17 01:17:49.568825+00
-Equipment-007	normal	Initial state	\N	2026-10-17 01:17:49.568825+00
-Equipment-009	normal	Initial state	\N	2026-10-17 01:17:49.568825+00
-Equipment-010	normal	Initial state	\N	2026-10-17 01:17:49.568825+00
-Equipment-011	normal	Initial state	\N	2026-10-17 01:17:49.568825+00
-Equipment-012	normal	Initial state	\N	2026-10-17 01:17:49.568825+00
-Equipment-014	normal	Initial state	\N	2026-10-17 01:17:49.568825+00
-Equipment-015	normal	Initial state	\N	2026-10-17 01:17:49.568825+00
-Equipment-016	normal	Initial state	\N	2026-10-17 01:17:49.568825+00
-Equipment-017	normal	Initial state	\N	2026-10-17 01:17:49.568825+00
-Equipment-018	normal	Initial state	\N	2026-10-17 01:17:49.568825+00
-Equipment-019	normal	Initial state	\N	2026-10-17 01:17:49.568825+00
-Equipment-020	normal	Initial state	\N	2026-10-17 01:17:49.568825+00
-Equipment-004	normal	Initial state	\N	2026-10-17 01:17:49.568825+00
-Equipment-021	normal	Initial state	\N	2026-10-17 01:17:49.568825+00
-Equipment-022	normal	Initial state	\N	2026-10-17 01:17:49.568825+00
-Equipment-023	normal	Initial state	\N	2026-10-17 01:17:49.568825+00
-Equipment-024	normal	Initial state	\N	2026-10-17 01:17:49.568825+00
-Equipment-025	normal	Initial state	\N	2026-10-17 01:17:49.568825+00
-Equipment-026	normal	Initial state	\N	2026-10-17 01:17:49.568825+00
-Equipment-027	normal	Initial state	\N	2026-10-17 01:17:49.568825+00
-Equipment-028	normal	Initial state	\N	2026-10-17 01:17:49.568825+00
-Equipment-030	normal	Initial state	\N	2026-10-17 01:17:49.568825+00
-Equipment-001	explained	wet-wash cleaning Monday 06:00 (2h) explains humidity up to 75%. Post-cleaning max expected 75%; reading 75% is normal.	{"at": "2026-10-17T01:18:29.392388+00:00", "query": "Equipment-001 humidity is 75%, should I worry?", "alert_id": 136, "confidence": 10, "sensor_type": "humidity", "sensor_value": 75}	2026-10-17 01:18:29.392388+00
+Equipment-008	normal	Initial state	\N	2026-10-18 14:32:02.325052+00
+Equipment-029	normal	Initial state	\N	2026-10-18 14:32:02.325052+00
+Equipment-013	normal	Initial state	\N	2026-10-18 14:32:02.325052+00
+Equipment-002	normal	Initial state	\N	2026-10-18 14:32:02.325052+00
+Equipment-003	normal	Initial state	\N	2026-10-18 14:32:02.325052+00
+Equipment-006	normal	Initial state	\N	2026-10-18 14:32:02.325052+00
+Equipment-007	normal	Initial state	\N	2026-10-18 14:32:02.325052+00
+Equipment-009	normal	Initial state	\N	2026-10-18 14:32:02.325052+00
+Equipment-005	normal	Initial state	\N	2026-10-18 14:32:02.325052+00
+Equipment-001	normal	Initial state	\N	2026-10-18 14:32:02.325052+00
+Equipment-010	normal	Initial state	\N	2026-10-18 14:32:02.325052+00
+Equipment-011	normal	Initial state	\N	2026-10-18 14:32:02.325052+00
+Equipment-012	normal	Initial state	\N	2026-10-18 14:32:02.325052+00
+Equipment-014	normal	Initial state	\N	2026-10-18 14:32:02.325052+00
+Equipment-015	normal	Initial state	\N	2026-10-18 14:32:02.325052+00
+Equipment-016	normal	Initial state	\N	2026-10-18 14:32:02.325052+00
+Equipment-017	normal	Initial state	\N	2026-10-18 14:32:02.325052+00
+Equipment-018	normal	Initial state	\N	2026-10-18 14:32:02.325052+00
+Equipment-019	normal	Initial state	\N	2026-10-18 14:32:02.325052+00
+Equipment-020	normal	Initial state	\N	2026-10-18 14:32:02.325052+00
+Equipment-004	normal	Initial state	\N	2026-10-18 14:32:02.325052+00
+Equipment-021	normal	Initial state	\N	2026-10-18 14:32:02.325052+00
+Equipment-022	normal	Initial state	\N	2026-10-18 14:32:02.325052+00
+Equipment-023	normal	Initial state	\N	2026-10-18 14:32:02.325052+00
+Equipment-024	normal	Initial state	\N	2026-10-18 14:32:02.325052+00
+Equipment-025	normal	Initial state	\N	2026-10-18 14:32:02.325052+00
+Equipment-026	normal	Initial state	\N	2026-10-18 14:32:02.325052+00
+Equipment-027	normal	Initial state	\N	2026-10-18 14:32:02.325052+00
+Equipment-028	normal	Initial state	\N	2026-10-18 14:32:02.325052+00
+Equipment-030	normal	Initial state	\N	2026-10-18 14:32:02.325052+00
 \.
 
 
@@ -469,20 +468,6 @@ Equipment-001	explained	wet-wash cleaning Monday 06:00 (2h) explains humidity up
 --
 
 COPY public.run_trace (run_id, step_no, station, step, detail, ms, created_at) FROM stdin;
-188d8d32-87e5-4b56-b1ae-cc0f56e21c31	1	Prompt	Prompt received	{"text": "Equipment-001 humidity is 75%, should I worry?"}	0	2026-10-17 01:18:26.666604+00
-188d8d32-87e5-4b56-b1ae-cc0f56e21c31	2	LLM	LLM call 1 -> lookup_equipment("Equipment-001")	{"chose": [{"args": {"name_or_id": "Equipment-001"}, "tool": "lookup_equipment"}], "model": "accounts/fireworks/models/gpt-oss-120b", "tokens": {"totalTokens": 796, "promptTokens": 690, "completionTokens": 106}, "reasoning": "We need to follow instructions. The user mentions \\"Equipment-001\\". We must call lookup_equipment with name_or_id \\"Equipment-001\\". Then based on result count: if exactly 1 row, call check_alert with query and equipment_id. If multiple rows, ask clarification. If 0 rows, ask for name/ID.\\n\\nSo first call lookup_equipment.", "ms_estimated": true}	945	2026-10-17 01:18:27.611+00
-188d8d32-87e5-4b56-b1ae-cc0f56e21c31	3	Tool	lookup_equipment("Equipment-001") -> 1 match	{"args": {"name_or_id": "Equipment-001"}, "tool": "lookup_equipment", "found": [{"name": "Motor 1", "site": "Austin Plant", "match": "exact", "equipment_id": "Equipment-001"}], "matches": 1}	7	2026-10-17 01:18:27.619451+00
-188d8d32-87e5-4b56-b1ae-cc0f56e21c31	4	LLM	LLM call 2 -> check_alert("Equipment-001 humidity is 75%, should I worry?", "Equipment-001")	{"chose": [{"args": {"query": "Equipment-001 humidity is 75%, should I worry?", "equipment_id": "Equipment-001"}, "tool": "check_alert"}], "model": "accounts/fireworks/models/gpt-oss-120b", "tokens": {"totalTokens": 889, "promptTokens": 830, "completionTokens": 59}, "reasoning": "We have exactly one row. Need to call check_alert with query and equipment_id.", "ms_estimated": true}	648	2026-10-17 01:18:28.266+00
-188d8d32-87e5-4b56-b1ae-cc0f56e21c31	5	Station 1	check_alert -> Understand: Motor 1 (Equipment-001), humidity 75	{"args": {"query": "Equipment-001 humidity is 75%, should I worry?", "equipment_id": "Equipment-001"}, "tool": "check_alert", "parsed": {"sensor_type": "humidity", "anomaly_type": "ENV-HUMIDITY", "equipment_id": "Equipment-001", "search_query": "Equipment-001 humidity is 75%, should I worry? ENV-HUMIDITY humidity environmental baseline cleaning", "sensor_value": 75}, "db_lookup": {"line": "Line 1", "name": "Motor 1", "site": "Austin Plant", "max_temp_c": 85, "equipment_id": "Equipment-001", "max_vibration_mm_s": 5}}	16	2026-10-17 01:18:28.283052+00
-188d8d32-87e5-4b56-b1ae-cc0f56e21c31	6	Station 2	Find evidence -> 3 chunks	{"after_rerank": [{"id": "environmental_baselines-29", "score": 0.997, "source": "environmental_baselines.json"}, {"id": "maintenance_schedule-27", "score": 0.607, "source": "maintenance_schedule.json"}, {"id": "equipment-db-Equipment-001", "score": 0.052, "source": "postgres.equipment"}], "search_query": "Equipment-001 humidity is 75%, should I worry? ENV-HUMIDITY humidity environmental baseline cleaning", "before_rerank": [{"id": "equipment-db-Equipment-001", "bm25": 0, "dense": 0, "hybrid": 0, "source": "postgres.equipment"}, {"id": "environmental_baselines-29", "bm25": 1, "dense": 1, "hybrid": 1, "source": "environmental_baselines.json"}, {"id": "environmental_baselines-30", "bm25": 0.289, "dense": 0.911, "hybrid": 0.725, "source": "environmental_baselines.json"}, {"id": "maintenance_schedule-27", "bm25": 0.482, "dense": 0.69, "hybrid": 0.628, "source": "maintenance_schedule.json"}, {"id": "maintenance_schedule-28", "bm25": 0, "dense": 0.559, "hybrid": 0.391, "source": "maintenance_schedule.json"}, {"id": "parts_catalog-20", "bm25": 0, "dense": 0.534, "hybrid": 0.374, "source": "parts_catalog.json"}, {"id": "parts_catalog-26", "bm25": 0, "dense": 0.515, "hybrid": 0.36, "source": "parts_catalog.json"}, {"id": "parts_catalog-17", "bm25": 0.129, "dense": 0.459, "hybrid": 0.36, "source": "parts_catalog.json"}, {"id": "parts_catalog-24", "bm25": 0, "dense": 0.51, "hybrid": 0.357, "source": "parts_catalog.json"}, {"id": "parts_catalog-25", "bm25": 0, "dense": 0.488, "hybrid": 0.341, "source": "parts_catalog.json"}]}	1044	2026-10-17 01:18:29.353281+00
-188d8d32-87e5-4b56-b1ae-cc0f56e21c31	7	Station 3	Check context -> confidence 10	{"cap": 10, "status": "FALSE POSITIVE", "reasons": {"layer0": "Top rerank score 1.00", "layer1": "75 >= humidity baseline + 15 65", "layer2": "wet-wash cleaning Monday 06:00 (2h) explains humidity up to 75%", "layer3": "Post-cleaning max expected 75%; reading 75% is normal", "layer4": "Recurs every Monday with the cleaning"}, "raw_score": 30, "threshold": 60, "confidence": 10, "cap_applied": true, "layer_scores": {"layer0": 50, "layer1": 40, "layer2": -40, "layer3": -15, "layer4": -5}}	7	2026-10-17 01:18:29.353281+00
-188d8d32-87e5-4b56-b1ae-cc0f56e21c31	8	Station 4	Decide -> HOLD (10%), template	{"model": null, "status": "FALSE POSITIVE", "decision": "HOLD", "response": "Status: FALSE POSITIVE\\nDiagnosis: humidity 75 on Equipment-001 is explained by context. wet-wash cleaning Monday 06:00 (2h) explains humidity up to 75%. Post-cleaning max expected 75%; reading 75% is normal.\\nAction: No action needed. Readings should return to baseline by 10:00.\\nParts: None", "answer_by": "template (no LLM)", "confidence": 10, "explanation": "wet-wash cleaning Monday 06:00 (2h) explains humidity up to 75%. Post-cleaning max expected 75%; reading 75% is normal."}	59	2026-10-17 01:18:29.392388+00
-188d8d32-87e5-4b56-b1ae-cc0f56e21c31	9	Write-back	Equipment-001: normal -> explained	{"new_status": "explained", "old_status": "normal", "alert_log_id": 136, "equipment_id": "Equipment-001"}	0	2026-10-17 01:18:29.392388+00
-188d8d32-87e5-4b56-b1ae-cc0f56e21c31	10	LLM	LLM call 3 -> reply to the worker	{"model": "accounts/fireworks/models/gpt-oss-120b", "reply": "Decision: HOLD (Motor 1)  \\nWhy: Humidity 75% is explained by the scheduled wet‑wash cleaning, which can raise humidity to that level.  \\nConfidence: 10%  \\nNext step: No action needed; the reading should return to normal by the next hour.", "ms_estimated": true}	540	2026-10-17 01:18:29.932+00
-88cc96d8-e8b7-4c3e-afbf-650347534f3e	1	Prompt	Prompt received	{"text": "Motor running hot"}	0	2026-10-17 01:18:34.902648+00
-88cc96d8-e8b7-4c3e-afbf-650347534f3e	2	LLM	LLM call 1 -> lookup_equipment("Motor")	{"chose": [{"args": {"name_or_id": "Motor"}, "tool": "lookup_equipment"}], "model": "accounts/fireworks/models/gpt-oss-120b", "tokens": {"totalTokens": 815, "promptTokens": 762, "completionTokens": 53}, "reasoning": "We need to process \\"Motor running hot\\". First, lookup_equipment with name_or_id \\"Motor\\". Use tool.", "ms_estimated": true}	820	2026-10-17 01:18:35.722+00
-88cc96d8-e8b7-4c3e-afbf-650347534f3e	3	Tool	lookup_equipment("Motor") -> 11 matches	{"args": {"name_or_id": "Motor"}, "tool": "lookup_equipment", "found": [{"name": "Motor 1", "site": "Austin Plant", "match": "type", "equipment_id": "Equipment-001"}, {"name": "Motor 10", "site": "Miami Plant", "match": "type", "equipment_id": "Equipment-025"}, {"name": "Motor 11", "site": "Seattle Plant", "match": "type", "equipment_id": "Equipment-028"}, {"name": "Motor 2", "site": "Austin Plant", "match": "type", "equipment_id": "Equipment-002"}, {"name": "Motor 3", "site": "Columbus Plant", "match": "type", "equipment_id": "Equipment-003"}, {"name": "Motor 4", "site": "Fremont Plant", "match": "type", "equipment_id": "Equipment-007"}, {"name": "Motor 5", "site": "Austin Plant", "match": "type", "equipment_id": "Equipment-009"}, {"name": "Motor 6", "site": "Fremont Plant", "match": "type", "equipment_id": "Equipment-012"}, {"name": "Motor 7", "site": "Columbus Plant", "match": "type", "equipment_id": "Equipment-016"}, {"name": "Motor 8", "site": "Fremont Plant", "match": "type", "equipment_id": "Equipment-018"}, {"name": "Motor 9", "site": "Minneapolis Plant", "match": "type", "equipment_id": "Equipment-021"}], "matches": 11}	11	2026-10-17 01:18:35.733637+00
-88cc96d8-e8b7-4c3e-afbf-650347534f3e	4	LLM	LLM call 2 -> reply to the worker	{"model": "accounts/fireworks/models/gpt-oss-120b", "reply": "Did you mean one of these machines?\\n\\n- Motor 1 (Austin Plant, Line 1)  \\n- Motor 2 (Austin Plant, Line 1)  \\n- Motor 3 (Columbus Plant, Line 2)  \\n- Motor 4 (Fremont Plant, Line 4)  \\n- Motor 5 (Austin Plant, Line 1)  \\n- Motor 6 (Fremont Plant, Line 4)  \\n- Motor 7 (Columbus Plant, Line 3)  \\n- Motor 8 (Fremont Plant, Line 4)  \\n\\nPlease specify the exact name or ID.", "ms_estimated": true}	886	2026-10-17 01:18:36.62+00
 \.
 
 
@@ -491,8 +476,6 @@ COPY public.run_trace (run_id, step_no, station, step, detail, ms, created_at) F
 --
 
 COPY public.runs (run_id, source, input, status, equipment_id, decision, confidence, llm_calls, tool_calls, total_ms, reply, started_at, finished_at) FROM stdin;
-188d8d32-87e5-4b56-b1ae-cc0f56e21c31	chat	Equipment-001 humidity is 75%, should I worry?	done	Equipment-001	HOLD	10	3	2	3284	Decision: HOLD (Motor 1)  \nWhy: Humidity 75% is explained by the scheduled wet‑wash cleaning, which can raise humidity to that level.  \nConfidence: 10%  \nNext step: No action needed; the reading should return to normal by the next hour.	2026-10-17 01:18:26.666604+00	2026-10-17 01:18:29.950646+00
-88cc96d8-e8b7-4c3e-afbf-650347534f3e	chat	Motor running hot	done	\N	ASKED	\N	2	1	1740	Did you mean one of these machines?\n\n- Motor 1 (Austin Plant, Line 1)  \n- Motor 2 (Austin Plant, Line 1)  \n- Motor 3 (Columbus Plant, Line 2)  \n- Motor 4 (Fremont Plant, Line 4)  \n- Motor 5 (Austin Plant, Line 1)  \n- Motor 6 (Fremont Plant, Line 4)  \n- Motor 7 (Columbus Plant, Line 3)  \n- Motor 8 (Fremont Plant, Line 4)  \n\nPlease specify the exact name or ID.	2026-10-17 01:18:34.902648+00	2026-10-17 01:18:36.642941+00
 \.
 
 
@@ -500,7 +483,7 @@ COPY public.runs (run_id, source, input, status, equipment_id, decision, confide
 -- Name: alert_log_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.alert_log_id_seq', 136, true);
+SELECT pg_catalog.setval('public.alert_log_id_seq', 151, true);
 
 
 --
@@ -608,5 +591,5 @@ ALTER TABLE ONLY public.runs
 -- PostgreSQL database dump complete
 --
 
-\unrestrict NbcNHNmXGi0FS92W0bqKO2pi1P9ZX4Bcdl2gkYam2ogi0OMEOccK73t7OVFYMsS
+\unrestrict rVZ32wjAm5QcvKQkvbnLCcnba994rbDTUOyqWDfhFyj7iL1HqTLqGt9v1bUqRhD
 

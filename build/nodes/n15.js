@@ -35,7 +35,7 @@ return [{
     llm_body: {
       model: 'accounts/fireworks/models/gpt-oss-120b',
       temperature: 0,
-      max_tokens: 200,             // ALERT answers stop naturally at ~150 tokens
+      max_tokens: 400,             // reasoning tokens count against the cap; 200 cut off some answers mid-line
       reasoning_effort: 'low',
       messages: [{ role: 'user', content: prompt }]
     }
