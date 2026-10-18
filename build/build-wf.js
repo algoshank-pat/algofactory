@@ -178,7 +178,8 @@ endpoint('Equipment', 'GET', 'floor/equipment', 180, FLOOR_SQL.equipment);
 endpoint('Alerts', 'GET', 'floor/alerts', 360, FLOOR_SQL.alerts, "={{ [$json.query.date || 'today'] }}");
 endpoint('History', 'GET', 'floor/history', 540, FLOOR_SQL.history,
   "={{ [$json.query.equipment_id || 'NO-ID', String(Math.min(168, Math.max(1, Number($json.query.hours) || 24)))] }}");
-endpoint('Reset', 'POST', 'floor/reset', 720, FLOOR_SQL.reset, "={{ [$json.body.equipment_id || 'NO-ID'] }}");
+endpoint('Action', 'POST', 'floor/action', 720, FLOOR_SQL.action,
+  "={{ [$json.body.equipment_id || 'NO-ID', $json.body.new_status || '', $json.body.note || '', $json.body.performed_by || ''] }}");
 endpoint('Runs', 'GET', 'floor/runs', 900, FLOOR_SQL.runs,
   "={{ [String(Number($json.query.limit) || 50), $json.query.plant || '', $json.query.decision || ''] }}");
 endpoint('Run', 'GET', 'floor/run', 1080, FLOOR_SQL.run, "={{ [$json.query.id || ''] }}");

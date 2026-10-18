@@ -100,6 +100,12 @@
   .chat-input button { background: var(--accent); color: #1a1405; border: 0; border-radius: 8px; padding: 0 14px; font-weight: 800; }
   .chat-input button:disabled { opacity: .6; cursor: wait; }
   .map-panel { margin-bottom: 0; }
+  /* Mark action taken (machine panel) */
+  .action-form { background: var(--panel-2); border: 1px solid var(--line); border-radius: 10px; padding: 12px; margin: 4px 0 16px; display: grid; gap: 8px; }
+  .action-form h2 { margin: 0; font-size: 12px; color: var(--muted); letter-spacing: .1em; text-transform: uppercase; }
+  .action-form label { display: grid; gap: 4px; font-size: 12px; color: var(--muted); }
+  .action-form textarea { min-height: 54px; }
+  .action-form .send { margin-top: 2px; }
   /* Tabs */
   .tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line); margin: 0 0 16px; }
   .tab { background: none; border: 0; border-bottom: 2px solid transparent; color: var(--muted); padding: 8px 14px; font-weight: 600; margin-bottom: -1px; }
@@ -180,7 +186,7 @@ const html = htm.bind(React.createElement);
 const API = '/webhook';
 const STATUSES = ['normal', 'watch', 'fault', 'explained', 'maintenance'];
 const COLOR = { normal: 'var(--normal)', watch: 'var(--watch)', fault: 'var(--fault)', explained: 'var(--explained)', maintenance: 'var(--maintenance)' };
-const DECISION_COLOR = { ACT: 'var(--fault)', ESCALATE: 'var(--watch)', HOLD: 'var(--explained)', RESET: 'var(--normal)' };
+const DECISION_COLOR = { ACT: 'var(--fault)', ESCALATE: 'var(--watch)', HOLD: 'var(--explained)', RESET: 'var(--normal)', ACTION: 'var(--normal)' };
 const PRESETS = [
   { label: 'Thermal overload', hint: 'expect ACT', query: 'Equipment-001 TH-001 temp 85°C' },
   { label: 'Humidity after cleaning', hint: 'expect HOLD', query: 'Equipment-001 humidity 75%' },
@@ -587,9 +593,22 @@ function History({ id, onClose, onChanged }) {
   const [err, setErr] = useState('');
   const load = useCallback(() => getJson(`/floor/history?equipment_id=${encodeURIComponent(id)}&hours=24`).then(setH).catch(e => setErr(e.message)), [id]);
   useEffect(() => { load(); }, [load]);
-  const reset = async () => {
-    await getJson('/floor/reset', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ equipment_id: id }) });
-    await load(); onChanged();
+  // Mark action taken: new status + what was done + who (name remembered in this browser)
+  const [newStatus, setNewStatus] = useState('normal');
+  const [note, setNote] = useState('');
+  const [who, setWho] = useState(() => lsGet('af.performedBy', ''));
+  const [saving, setSaving] = useState(false);
+  const [msg, setMsg] = useState(null);
+  const saveAction = async e => {
+    e.preventDefault();
+    setSaving(true); setMsg(null);
+    try {
+      const r = await getJson('/floor/action', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ equipment_id: id, new_status: newStatus, note, performed_by: who }) });
+      if (r.error) setMsg({ err: true, text: r.error });
+      else { lsSet('af.performedBy', who.trim()); setNote(''); setMsg({ text: `Saved: ${r.old_status} → ${r.new_status}` }); await load(); onChanged(); }
+    } catch (e2) { setMsg({ err: true, text: e2.message }); }
+    setSaving(false);
   };
   return html`
     <div class="overlay" onClick=${onClose}>
@@ -605,13 +624,29 @@ function History({ id, onClose, onChanged }) {
             <div>Updated</div><div>${ago(h.updated_at)}</div>
             <div>Limits</div><div>${h.max_temp_c}°C · ${h.max_vibration_mm_s} mm/s</div>
           </div>
-          ${h.status !== 'normal' && html`<div class="row-btns"><button class="btn danger" onClick=${reset}>Reset to normal</button></div>`}
+          <form class="action-form" onSubmit=${saveAction}>
+            <h2>Mark action taken</h2>
+            <label>New status
+              <select class="sel" value=${newStatus} onChange=${e => setNewStatus(e.target.value)}>
+                <option value="normal">Back to normal</option>
+                <option value="maintenance">In maintenance</option>
+              </select>
+            </label>
+            <label>What was done
+              <textarea value=${note} onInput=${e => setNote(e.target.value)} placeholder="e.g. Replaced bearing 6208, temperature back to 70°C" required></textarea>
+            </label>
+            <label>Your name
+              <input class="sel" value=${who} onInput=${e => setWho(e.target.value)} placeholder="e.g. Raj (shift lead)" required />
+            </label>
+            <button class="send" type="submit" disabled=${saving || !note.trim() || !who.trim()}>${saving ? 'Saving…' : 'Save action'}</button>
+            ${msg && html`<div class=${msg.err ? 'err' : 'sub'} style=${{ marginTop: '6px' }}>${msg.text}</div>`}
+          </form>
           <h2 style=${{ fontSize: '12px', color: 'var(--muted)', letterSpacing: '.1em', textTransform: 'uppercase' }}>Last ${h.hours} hours (${h.alerts.length})</h2>
           ${h.alerts.length === 0 && html`<div class="empty">No alerts in this window.</div>`}
           ${h.alerts.map(a => html`
             <div class="alert" key=${a.id}>
               <div class="t mono">${time(a.created_at)}</div>
-              <div><div>${a.summary}</div><div class="s">${a.input_source} · ${a.reason}</div></div>
+              <div><div>${a.decision === 'ACTION' ? a.action_note : a.summary}</div><div class="s">${a.decision === 'ACTION' ? a.reason : `${a.input_source} · ${a.reason}`}</div></div>
               <div class="dec" style=${{ '--c': DECISION_COLOR[a.decision] }}>${a.decision}${a.confidence != null ? ` ${a.confidence}%` : ''}</div>
             </div>`)}
         `}
@@ -630,9 +665,9 @@ function App() {
   const [tab, setTab] = useState(() => lsGet('af.tab', 'equipment'));
   const [traceRun, setTraceRun] = useState(null);      // run shown in the Process trace tab
   const [liveRun, setLiveRun] = useState(null);        // run of the latest chat message (Activity panel)
-  const [showActivity, setShowActivity] = useState(() => lsGet('af.showActivity', true));
+  const [showActivity, setShowActivity] = useState(() => lsGet('af.showActivity.v2', false));   // hidden until the user clicks Show activity
   const goTab = t => { setTab(t); lsSet('af.tab', t); };
-  const toggleActivity = () => { setShowActivity(v => { lsSet('af.showActivity', !v); return !v; }); };
+  const toggleActivity = () => { setShowActivity(v => { lsSet('af.showActivity.v2', !v); return !v; }); };
   const openTrace = id => { setTraceRun(id); goTab('trace'); };
 
   const refresh = useCallback(async () => {

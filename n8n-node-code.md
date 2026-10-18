@@ -965,9 +965,9 @@ Open **http://localhost:5678/webhook/floor**. n8n serves the page and its data f
 | `GET /webhook/floor/equipment` | `{ equipment: [...] }`: 20 machines with site, line, status, reason, last_reading, alerts_today |
 | `GET /webhook/floor/alerts?date=today` | `{ date, alerts: [...] }`: alert_log for that day (Pacific time); also accepts YYYY-MM-DD |
 | `GET /webhook/floor/history?equipment_id=..&hours=24` | the machine, its status, and its alerts in the window (1-168 h) |
-| `POST /webhook/floor/reset` `{ equipment_id }` | sets the status to normal and logs a RESET (source dashboard) |
+| `POST /webhook/floor/action` `{ equipment_id, new_status, note, performed_by }` | Mark action taken: status -> normal or maintenance, logs an ACTION row with the note and name; rejects missing fields |
 
-Dashboard features: a USA plant map (7 plants, dot color = worst status, click to filter), the **Ask AlgoFactory** chat panel, status tiles (click to filter), a site filter, machine cards by site and line (click for 24 h history and Reset), an Alerts today list, and **Send test alert** (presets plus free text, posting to the real `/webhook/anomaly-check` with source `dashboard`). It refreshes every 15 s.
+Dashboard features: a USA plant map (7 plants, dot color = worst status, click to filter), the **Ask AlgoFactory** chat panel, status tiles (click to filter), a site filter, machine cards by site and line (click for 24 h history and Mark action taken), an Alerts today list, and **Send test alert** (presets plus free text, posting to the real `/webhook/anomaly-check` with source `dashboard`). It refreshes every 15 s.
 
 ## Test results (n8n webhook, 2026-10-16, 2 runs each)
 

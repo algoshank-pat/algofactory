@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict rVZ32wjAm5QcvKQkvbnLCcnba994rbDTUOyqWDfhFyj7iL1HqTLqGt9v1bUqRhD
+\restrict MUbdU3UQAv4f9GQHqHSnvwWKR1EdMBc0K8VXf0iKkpVHyV9B56YrmAGnTwUPSTi
 
 -- Dumped from database version 16.14
 -- Dumped by pg_dump version 16.14
@@ -273,7 +273,9 @@ CREATE TABLE public.alert_log (
     confidence integer,
     reason text,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
-    run_id uuid
+    run_id uuid,
+    action_note text,
+    performed_by text
 );
 
 
@@ -383,7 +385,7 @@ ALTER TABLE ONLY public.alert_log ALTER COLUMN id SET DEFAULT nextval('public.al
 -- Data for Name: alert_log; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.alert_log (id, equipment_id, input_source, summary, decision, confidence, reason, created_at, run_id) FROM stdin;
+COPY public.alert_log (id, equipment_id, input_source, summary, decision, confidence, reason, created_at, run_id, action_note, performed_by) FROM stdin;
 \.
 
 
@@ -430,36 +432,36 @@ Equipment-027	Compressor 6	compressor	Plant-F	Floor-2-North	110	8.0	Piston-Ring-
 --
 
 COPY public.equipment_status (equipment_id, status, reason, last_reading, updated_at) FROM stdin;
-Equipment-008	normal	Initial state	\N	2026-10-18 14:32:02.325052+00
-Equipment-029	normal	Initial state	\N	2026-10-18 14:32:02.325052+00
-Equipment-013	normal	Initial state	\N	2026-10-18 14:32:02.325052+00
-Equipment-002	normal	Initial state	\N	2026-10-18 14:32:02.325052+00
-Equipment-003	normal	Initial state	\N	2026-10-18 14:32:02.325052+00
-Equipment-006	normal	Initial state	\N	2026-10-18 14:32:02.325052+00
-Equipment-007	normal	Initial state	\N	2026-10-18 14:32:02.325052+00
-Equipment-009	normal	Initial state	\N	2026-10-18 14:32:02.325052+00
-Equipment-005	normal	Initial state	\N	2026-10-18 14:32:02.325052+00
-Equipment-001	normal	Initial state	\N	2026-10-18 14:32:02.325052+00
-Equipment-010	normal	Initial state	\N	2026-10-18 14:32:02.325052+00
-Equipment-011	normal	Initial state	\N	2026-10-18 14:32:02.325052+00
-Equipment-012	normal	Initial state	\N	2026-10-18 14:32:02.325052+00
-Equipment-014	normal	Initial state	\N	2026-10-18 14:32:02.325052+00
-Equipment-015	normal	Initial state	\N	2026-10-18 14:32:02.325052+00
-Equipment-016	normal	Initial state	\N	2026-10-18 14:32:02.325052+00
-Equipment-017	normal	Initial state	\N	2026-10-18 14:32:02.325052+00
-Equipment-018	normal	Initial state	\N	2026-10-18 14:32:02.325052+00
-Equipment-019	normal	Initial state	\N	2026-10-18 14:32:02.325052+00
-Equipment-020	normal	Initial state	\N	2026-10-18 14:32:02.325052+00
-Equipment-004	normal	Initial state	\N	2026-10-18 14:32:02.325052+00
-Equipment-021	normal	Initial state	\N	2026-10-18 14:32:02.325052+00
-Equipment-022	normal	Initial state	\N	2026-10-18 14:32:02.325052+00
-Equipment-023	normal	Initial state	\N	2026-10-18 14:32:02.325052+00
-Equipment-024	normal	Initial state	\N	2026-10-18 14:32:02.325052+00
-Equipment-025	normal	Initial state	\N	2026-10-18 14:32:02.325052+00
-Equipment-026	normal	Initial state	\N	2026-10-18 14:32:02.325052+00
-Equipment-027	normal	Initial state	\N	2026-10-18 14:32:02.325052+00
-Equipment-028	normal	Initial state	\N	2026-10-18 14:32:02.325052+00
-Equipment-030	normal	Initial state	\N	2026-10-18 14:32:02.325052+00
+Equipment-008	normal	Initial state	\N	2026-10-18 23:37:49.771227+00
+Equipment-002	normal	Initial state	\N	2026-10-18 23:37:49.771227+00
+Equipment-029	normal	Initial state	\N	2026-10-18 23:37:49.771227+00
+Equipment-013	normal	Initial state	\N	2026-10-18 23:37:49.771227+00
+Equipment-003	normal	Initial state	\N	2026-10-18 23:37:49.771227+00
+Equipment-005	normal	Initial state	\N	2026-10-18 23:37:49.771227+00
+Equipment-006	normal	Initial state	\N	2026-10-18 23:37:49.771227+00
+Equipment-007	normal	Initial state	\N	2026-10-18 23:37:49.771227+00
+Equipment-009	normal	Initial state	\N	2026-10-18 23:37:49.771227+00
+Equipment-010	normal	Initial state	\N	2026-10-18 23:37:49.771227+00
+Equipment-011	normal	Initial state	\N	2026-10-18 23:37:49.771227+00
+Equipment-012	normal	Initial state	\N	2026-10-18 23:37:49.771227+00
+Equipment-014	normal	Initial state	\N	2026-10-18 23:37:49.771227+00
+Equipment-015	normal	Initial state	\N	2026-10-18 23:37:49.771227+00
+Equipment-016	normal	Initial state	\N	2026-10-18 23:37:49.771227+00
+Equipment-017	normal	Initial state	\N	2026-10-18 23:37:49.771227+00
+Equipment-018	normal	Initial state	\N	2026-10-18 23:37:49.771227+00
+Equipment-019	normal	Initial state	\N	2026-10-18 23:37:49.771227+00
+Equipment-020	normal	Initial state	\N	2026-10-18 23:37:49.771227+00
+Equipment-004	normal	Initial state	\N	2026-10-18 23:37:49.771227+00
+Equipment-021	normal	Initial state	\N	2026-10-18 23:37:49.771227+00
+Equipment-022	normal	Initial state	\N	2026-10-18 23:37:49.771227+00
+Equipment-023	normal	Initial state	\N	2026-10-18 23:37:49.771227+00
+Equipment-024	normal	Initial state	\N	2026-10-18 23:37:49.771227+00
+Equipment-001	normal	Initial state	\N	2026-10-18 23:37:49.771227+00
+Equipment-025	normal	Initial state	\N	2026-10-18 23:37:49.771227+00
+Equipment-026	normal	Initial state	\N	2026-10-18 23:37:49.771227+00
+Equipment-027	normal	Initial state	\N	2026-10-18 23:37:49.771227+00
+Equipment-028	normal	Initial state	\N	2026-10-18 23:37:49.771227+00
+Equipment-030	normal	Initial state	\N	2026-10-18 23:37:49.771227+00
 \.
 
 
@@ -483,7 +485,7 @@ COPY public.runs (run_id, source, input, status, equipment_id, decision, confide
 -- Name: alert_log_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.alert_log_id_seq', 151, true);
+SELECT pg_catalog.setval('public.alert_log_id_seq', 185, true);
 
 
 --
@@ -591,5 +593,5 @@ ALTER TABLE ONLY public.runs
 -- PostgreSQL database dump complete
 --
 
-\unrestrict rVZ32wjAm5QcvKQkvbnLCcnba994rbDTUOyqWDfhFyj7iL1HqTLqGt9v1bUqRhD
+\unrestrict MUbdU3UQAv4f9GQHqHSnvwWKR1EdMBc0K8VXf0iKkpVHyV9B56YrmAGnTwUPSTi
 

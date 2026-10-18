@@ -28,21 +28,37 @@ FROM (
 SELECT e.equipment_id, e.name, e.type, e.site, e.line, e.location, e.max_temp_c, e.max_vibration_mm_s,
        s.status, s.reason, s.last_reading, s.updated_at, $2::int AS hours,
        coalesce((SELECT json_agg(x ORDER BY x.created_at DESC) FROM (
-          SELECT id, created_at, input_source, summary, decision, confidence, reason
+          SELECT id, created_at, input_source, summary, decision, confidence, reason, action_note, performed_by
           FROM alert_log WHERE equipment_id = $1 AND created_at >= now() - make_interval(hours => $2::int)) x), '[]') AS alerts
 FROM equipment e JOIN equipment_status s USING (equipment_id)
 WHERE e.equipment_id = $1;`,
 
-  reset: `
-WITH r AS (
-  UPDATE equipment_status SET status = 'normal', reason = 'Reset from dashboard', updated_at = now()
-  WHERE equipment_id = $1 RETURNING equipment_id
-), l AS (
-  INSERT INTO alert_log (equipment_id, input_source, summary, decision, confidence, reason)
-  SELECT equipment_id, 'dashboard', 'Status reset from dashboard', 'RESET', NULL, 'Technician reset' FROM r
+  // Mark action taken. $1 = equipment_id, $2 = new status (normal | maintenance), $3 = what was done, $4 = who did it
+  action: `
+WITH v AS (SELECT $1::text AS eid, lower(trim($2)) AS st, nullif(trim($3), '') AS note, nullif(trim($4), '') AS who),
+ok AS (
+  SELECT v.* FROM v
+  WHERE v.st IN ('normal', 'maintenance') AND v.note IS NOT NULL AND v.who IS NOT NULL
+    AND EXISTS (SELECT 1 FROM equipment e WHERE e.equipment_id = v.eid)
+),
+old AS (SELECT s.status FROM equipment_status s, ok WHERE s.equipment_id = ok.eid),
+u AS (
+  UPDATE equipment_status s
+  SET status = ok.st, reason = 'Action taken by ' || ok.who || ': ' || ok.note, updated_at = now()
+  FROM ok WHERE s.equipment_id = ok.eid
+  RETURNING s.equipment_id, s.status
+),
+l AS (
+  INSERT INTO alert_log (equipment_id, input_source, summary, decision, confidence, reason, action_note, performed_by)
+  SELECT ok.eid, 'dashboard', 'Action taken: ' || ok.note, 'ACTION', NULL,
+         'By ' || ok.who || ' · ' || coalesce((SELECT status FROM old), '?') || ' -> ' || ok.st, ok.note, ok.who
+  FROM ok
   RETURNING id
 )
-SELECT (SELECT count(*) FROM r)::int AS reset, $1 AS equipment_id, (SELECT id FROM l) AS alert_id;`,
+SELECT (SELECT count(*) FROM u)::int AS updated, $1 AS equipment_id, (SELECT status FROM old) AS old_status,
+       (SELECT status FROM u) AS new_status, (SELECT id FROM l) AS alert_id,
+       CASE WHEN NOT EXISTS (SELECT 1 FROM ok)
+            THEN 'Not saved: choose Back to normal or In maintenance, describe what was done, and enter your name.' END AS error;`,
   // Chat runs for the Activity log. $1 = limit, $2 = plant ('' = all), $3 = decision ('' = all)
   runs: `
 SELECT coalesce(json_agg(x ORDER BY x.started_at DESC), '[]') AS runs

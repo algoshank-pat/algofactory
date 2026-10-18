@@ -6,7 +6,8 @@ start_m AS (
   RETURNING s.equipment_id, 'to maintenance'::text AS change),
 end_m AS (
   UPDATE equipment_status s SET status = 'normal', reason = 'Maintenance window ended', updated_at = now()
-  WHERE s.status = 'maintenance' AND s.equipment_id NOT IN (SELECT id FROM a)
+  -- only maintenance the schedule set; maintenance marked by a person stays until they mark it normal
+  WHERE s.status = 'maintenance' AND s.reason = 'Scheduled maintenance/cleaning window' AND s.equipment_id NOT IN (SELECT id FROM a)
   RETURNING s.equipment_id, 'maintenance -> normal'::text),
 expired AS (
   UPDATE equipment_status s SET status = 'normal', reason = 'Explained alert expired after 3 hours', updated_at = now()
