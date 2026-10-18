@@ -1,6 +1,6 @@
 # AlgoFactory: Status and Handoff
 
-*Updated Friday, October 16, 2026 (evening). Maven "Mastering Agentic AI", Week 2: Grounding AI with RAG. Due Sunday, October 18, 11:59 pm PT.*
+*Updated Sunday, October 18, 2026. Maven "Mastering Agentic AI", Week 2: Grounding AI with RAG. Due Sunday, October 18, 11:59 pm PT.*
 
 ## One line
 AlgoFactory is context-aware anomaly detection for a factory floor. Every sensor alert and every worker chat message runs through the same four stations: Understand, Find evidence, Check context, Decide. Real faults get an action plan; false positives (such as humidity after a scheduled wet-wash) are held with an explanation. It is built in n8n.
@@ -56,7 +56,7 @@ Worker chat    -> AI Agent calls       -> bge rerank (top 3)      schedule, base
 | AlgoFactory - 2 Query | 9b3ede12f642464f | Sensor input: Webhook -> Run Pipeline -> Respond |
 | AlgoFactory - 3 Pipeline | 5c7a1f0e2d3b4a69 | Stations 1-4 (Nodes 9-19), shared by sensor alerts and chat. Writes alert_log and equipment_status. |
 | AlgoFactory - 4 Chat | 4a9c3d2e1f0b5c68 | Chat Trigger -> Run Start -> AI Agent (gpt-oss-120b) + memory + traced tools: lookup_equipment, get_equipment_status, check_alert (calls the pipeline) -> Order Trace -> Finish Run -> Reply |
-| AlgoFactory - 5 Floor API | 7e9c3f2a4b5d6e81 | Serves the dashboard and its JSON endpoints: /floor, /floor/equipment, /floor/alerts, /floor/history, /floor/reset, /floor/runs, /floor/run |
+| AlgoFactory - 5 Floor API | 7e9c3f2a4b5d6e81 | Serves the dashboard and its JSON endpoints: /floor, /floor/equipment, /floor/alerts, /floor/history, /floor/action, /floor/runs, /floor/run |
 | AlgoFactory - 6 Status Job | 6d8b2e1f3c4a5b70 | Every 15 minutes: explained -> normal after 3 hours; maintenance windows. Never overrides a fault. |
 
 ### Services and models
