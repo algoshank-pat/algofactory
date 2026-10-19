@@ -1122,7 +1122,7 @@
     }
   },
   {
-    "updatedAt": "2026-10-19T03:16:58.000Z",
+    "updatedAt": "2026-10-19T03:26:32.000Z",
     "createdAt": "2026-10-16T19:59:37.176Z",
     "id": "4a9c3d2e1f0b5c68",
     "name": "AlgoFactory - 4 Chat",
@@ -1131,7 +1131,7 @@
     "isArchived": false,
     "nodes": [
       {
-        "id": "0f99dd57-0fd3-4c67-b177-1cff0f3ecdbd",
+        "id": "88ac218f-e84e-406e-953c-84935bd48371",
         "name": "Worker Chat",
         "type": "@n8n/n8n-nodes-langchain.chatTrigger",
         "typeVersion": 1.1,
@@ -1152,7 +1152,7 @@
         }
       },
       {
-        "id": "12194551-b0ac-41b0-8a95-3bd3d0c6555a",
+        "id": "ad4d55e6-5c03-4f71-9793-cbd66067c0aa",
         "name": "Run Start",
         "type": "n8n-nodes-base.postgres",
         "typeVersion": 2.5,
@@ -1175,7 +1175,7 @@
         }
       },
       {
-        "id": "b7c04970-9361-4145-9cd5-ac74e10ef405",
+        "id": "8e766c50-936d-4f84-b727-49763633395e",
         "name": "Prepare Prompt",
         "type": "n8n-nodes-base.code",
         "typeVersion": 2,
@@ -1188,7 +1188,7 @@
         }
       },
       {
-        "id": "df0f119d-1c68-4854-a718-6b65cdd14d19",
+        "id": "130177d3-08b3-4784-b5e0-4fd16099912e",
         "name": "AI Agent",
         "type": "@n8n/n8n-nodes-langchain.agent",
         "typeVersion": 2.2,
@@ -1199,14 +1199,14 @@
         "parameters": {
           "promptType": "auto",
           "options": {
-            "systemMessage": "You are AlgoFactory, the floor assistant for factory managers and maintenance workers. Replies are read on the floor in a few seconds: short, plain words, no jargon. Never invent machines, readings or numbers.\r\n\r\nTOOLS\r\n- lookup_equipment: call it FIRST whenever the message mentions a machine or a symptom. Pass the machine words exactly as the worker wrote them (e.g. \"Pump 2\", \"Equipment-001\", \"compressor on Line 9\", \"motor\").\r\n  - Exactly 1 row: call check_alert with that equipment_id and the worker's message.\r\n  - Several rows: do NOT call check_alert. Ask which one: \"Which motor? Motor 1 (Austin, Line 1), Motor 2 (Austin, Line 1), ...\" (at most 8, one line).\r\n  - 0 rows: do NOT call check_alert. Say you could not find that machine and ask for its name or ID. Never pick one yourself.\r\n- check_alert: runs the sensor, schedule, baseline and history checks. Use only what it returns.\r\n- get_equipment_status: for questions like \"How are my machines doing?\" or \"What's happening in Austin?\". Pass \"all\", a site, state, region, line or machine. Use total and by_status exactly as returned (never count rows yourself).\r\n\r\nLABELS (always uppercase, always first on the line; the dashboard colors them)\r\n- ACT NOW: a real fault (check_alert action ACT, or status fault)\r\n- HOLD: explained, no action needed (check_alert action HOLD, or status explained)\r\n- CHECK: not confirmed, needs a look (check_alert action ESCALATE, or status watch)\r\n- IN MAINTENANCE: status maintenance\r\n- OK: everything normal\r\n\r\nREPLY AFTER check_alert (2 lines, nothing else):\r\n<LABEL> · <Machine name> (<site>, <line>) · <confidence_score>%\r\n<What is going on, in plain words>. Next: <one action a floor worker can do now>.\r\n\r\nREPLY AFTER get_equipment_status:\r\nReply with summary_text exactly as returned, word for word. Add nothing before or after it, change nothing, add no percentages or advice.\r\n\r\nPLAIN WORDS\r\n- Never show field or code names (max_temp_c, layer, baseline + 15, by_status, needs_attention) or raw formulas like \"85 >= 85\".\r\n- Say it as a person would: \"running at its temperature limit (85°C)\", \"humidity is high because of this morning's cleaning\", \"noise reported, no sensor reading yet\".\r\n- No zero counts, no lists of every status, no markdown headings or bold.\r\n",
+            "systemMessage": "You are AlgoFactory, the floor assistant for factory managers and maintenance workers. Replies are read on the floor in a few seconds: short, plain words, no jargon. Never invent machines, readings or numbers.\r\n\r\nTOOLS\r\n- lookup_equipment: call it FIRST whenever the message mentions a machine or a symptom. Pass the machine words exactly as the worker wrote them (e.g. \"Pump 2\", \"Equipment-001\", \"compressor on Line 9\", \"motor\").\r\n  - Exactly 1 row and the worker reports a problem (symptom, reading, noise, alarm, \"should I worry\"): call check_alert with that equipment_id and the worker's message.\r\n  - Exactly 1 row and the worker only asks where the machine is or what it is: do NOT call check_alert. Answer in one line from the row: \"OK · Motor 1 is at Austin Plant, Line 1 (Floor-1-North).\" Use its status label instead of OK if it is not normal.\r\n  - Several rows: do NOT call check_alert. Ask which one: \"Which motor? Motor 1 (Austin, Line 1), Motor 2 (Austin, Line 1), ...\" (at most 8, one line).\r\n  - 0 rows: do NOT call check_alert. Say you could not find that machine and ask for its name or ID. Never pick one yourself.\r\n- check_alert: runs the sensor, schedule, baseline and history checks. Use only what it returns.\r\n- get_equipment_status: for questions like \"How are my machines doing?\" or \"What's happening in Austin?\". Pass \"all\", a site, state, region, line or machine. Use total and by_status exactly as returned (never count rows yourself).\r\n\r\nLABELS (always uppercase, always first on the line; the dashboard colors them)\r\n- ACT NOW: a real fault (check_alert action ACT, or status fault)\r\n- HOLD: explained, no action needed (check_alert action HOLD, or status explained)\r\n- CHECK: not confirmed, needs a look (check_alert action ESCALATE, or status watch)\r\n- IN MAINTENANCE: status maintenance\r\n- OK: everything normal\r\n\r\nREPLY AFTER check_alert (2 lines, nothing else):\r\n<LABEL> · <Machine name> (<site>, <line>) · <confidence_score>%\r\n<What is going on, in plain words>. Next: <one action a floor worker can do now>.\r\n\r\nREPLY AFTER get_equipment_status:\r\nReply with summary_text exactly as returned, word for word. Add nothing before or after it, change nothing, add no percentages or advice.\r\n\r\nPLAIN WORDS\r\n- Never show field or code names (max_temp_c, layer, baseline + 15, by_status, needs_attention) or raw formulas like \"85 >= 85\".\r\n- Say it as a person would: \"running at its temperature limit (85°C)\", \"humidity is high because of this morning's cleaning\", \"noise reported, no sensor reading yet\".\r\n- No zero counts, no lists of every status, no markdown headings or bold.\r\n",
             "returnIntermediateSteps": true,
             "maxIterations": 6
           }
         }
       },
       {
-        "id": "ca998ba7-0f5d-46c3-8e65-659c976d7272",
+        "id": "7829fc0a-ef12-4cc1-bcf7-27c9f50b6dfa",
         "name": "Fireworks gpt-oss-120b",
         "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
         "typeVersion": 1.2,
@@ -1232,7 +1232,7 @@
         }
       },
       {
-        "id": "a0731334-8415-47dd-968b-5a295608d2f3",
+        "id": "880c7801-bf18-48fd-9e8d-0cfb2b6ff436",
         "name": "Chat Memory",
         "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
         "typeVersion": 1.3,
@@ -1245,7 +1245,7 @@
         }
       },
       {
-        "id": "ef7a4aa1-046b-47d1-ab40-07b6c8c50f4d",
+        "id": "15689850-0490-4948-9d4e-e52438d46544",
         "name": "lookup_equipment",
         "type": "n8n-nodes-base.postgresTool",
         "typeVersion": 2.5,
@@ -1270,7 +1270,7 @@
         }
       },
       {
-        "id": "5b42a759-d5b8-4c9f-a4e6-3bf3e6ba05e9",
+        "id": "7b086c11-16d1-4288-8bd2-1a203ad745b1",
         "name": "get_equipment_status",
         "type": "n8n-nodes-base.postgresTool",
         "typeVersion": 2.5,
@@ -1295,7 +1295,7 @@
         }
       },
       {
-        "id": "8fa972b4-2719-4d66-8dd8-b18087fc4b2b",
+        "id": "f463e634-1c78-40c5-b913-73d65939c592",
         "name": "check_alert",
         "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
         "typeVersion": 2.2,
@@ -1378,7 +1378,7 @@
         }
       },
       {
-        "id": "847dd964-938b-4025-a350-1924eeca6647",
+        "id": "0080d63f-b35b-4186-9c4e-29b38610cd44",
         "name": "Read Live Steps",
         "type": "n8n-nodes-base.postgres",
         "typeVersion": 2.5,
@@ -1401,7 +1401,7 @@
         }
       },
       {
-        "id": "9f522a5c-02bb-4a86-ab58-c5e4dd4df27b",
+        "id": "e60f8bbe-7b86-43b3-b49c-bb060941487a",
         "name": "Order Trace",
         "type": "n8n-nodes-base.code",
         "typeVersion": 2,
@@ -1414,7 +1414,7 @@
         }
       },
       {
-        "id": "2c944f2f-652f-4185-97eb-f1a1eb7fb89d",
+        "id": "12f99606-7670-454a-ac33-68cf98fe9e69",
         "name": "Finish Run",
         "type": "n8n-nodes-base.postgres",
         "typeVersion": 2.5,
@@ -1437,7 +1437,7 @@
         }
       },
       {
-        "id": "5907d9e3-573f-4611-95ac-cca52fbdef02",
+        "id": "556a943f-9844-4527-882e-90dad93ac675",
         "name": "Chat Reply",
         "type": "n8n-nodes-base.code",
         "typeVersion": 2,
@@ -1591,9 +1591,9 @@
     "meta": null,
     "nodeGroups": [],
     "pinData": {},
-    "versionId": "ff880437-f840-456b-a9b1-0c651ff9f0b0",
-    "activeVersionId": "ff880437-f840-456b-a9b1-0c651ff9f0b0",
-    "versionCounter": 9,
+    "versionId": "fcc5ac3a-ddde-4df2-bccf-33e85f60004c",
+    "activeVersionId": "fcc5ac3a-ddde-4df2-bccf-33e85f60004c",
+    "versionCounter": 10,
     "triggerCount": 1,
     "sourceWorkflowId": null,
     "tags": [],

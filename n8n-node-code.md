@@ -41,6 +41,8 @@
 | Node 15: max_tokens 200 | ALERT answers stop at ~150 tokens; the cap guards against runaway output. |
 | Node 14b + 15b: escalations use a template, no LLM | Node 14 already decides them; saves ~1 s and cannot hallucinate. |
 | Node 15: max_tokens 200 | ALERT answers stop at ~150 tokens; the cap guards against runaway output. |
+| Node 14b + 15b: escalations use a template, no LLM | Node 14 already decides them; saves ~1 s and cannot hallucinate. |
+| Node 15: max_tokens 200 | ALERT answers stop at ~150 tokens; the cap guards against runaway output. |
 | Node 9b: equipment specs from Postgres; equipment.csv no longer chunked into Pinecone | One source of truth for machine data (31 vectors, was 51). Node 12 adds the row as a context chunk. |
 | Node 14b + 15b: escalations use a template, no LLM | Node 14 already decides them; saves ~1 s and cannot hallucinate. |
 | Node 15: max_tokens 200 | ALERT answers stop at ~150 tokens; the cap guards against runaway output. |

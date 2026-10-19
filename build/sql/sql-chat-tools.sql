@@ -14,6 +14,8 @@ DECLARE
 BEGIN
   FOR i IN 1..10 LOOP n := regexp_replace(n, '\m' || w[i] || '\M', i::text, 'g'); END LOOP;
   n := regexp_replace(n, '\s+', ' ', 'g');
+  -- "motor1", "Motor-1", "pump#2", "line9" -> "motor 1", "pump 2", "line 9" (IDs like equipment-001 are left alone)
+  n := regexp_replace(n, '\m(motor|pump|compressor|fan|line)s?\s*[-_#]?\s*(\d+)', '\1 \2', 'g');
 
   RETURN QUERY SELECT 'exact', e.equipment_id, e.name, e.type, e.site, e.line, e.location, s.status, e.max_temp_c, e.max_vibration_mm_s, e.bearing_type, e.description
     FROM equipment e LEFT JOIN equipment_status s USING (equipment_id)
