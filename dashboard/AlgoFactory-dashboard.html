@@ -536,7 +536,7 @@ function ActivityLog({ sites, onOpenRun }) {
     </div>`;
 }
 
-function Chat({ onActivity, onRunStart, onViewTrace }) {
+function Chat({ onActivity, onRunStart, onViewTrace, showDetails }) {   // showDetails: tool calls + timing, only with Show activity on
   const [sessionId] = useState(() => 'dash-' + Math.random().toString(36).slice(2, 10));
   const [msgs, setMsgs] = useState([{ role: 'bot', text: 'Hi! Tell me what you see on a machine, or ask: How are my machines doing?' }]);
   const [input, setInput] = useState('');
@@ -571,8 +571,8 @@ function Chat({ onActivity, onRunStart, onViewTrace }) {
         ${msgs.map((m, i) => html`
           <div key=${i} class=${'msg ' + m.role + (m.err ? ' err' : '')}>
             ${m.role === 'bot' ? html`<${FormattedText} text=${m.text} />` : m.text}
-            ${m.tools && m.tools.length > 0 && html`<div class="tools">${m.tools.map((t, j) => html`<span class="tool" key=${j}>${t}</span>`)}</div>`}
-            ${m.sec && html`<div class="meta">${m.sec}s · n8n AI Agent${m.runId ? html` · <a href="#" onClick=${e => { e.preventDefault(); onViewTrace(m.runId); }}>view trace</a>` : ''}</div>`}
+            ${showDetails && m.tools && m.tools.length > 0 && html`<div class="tools">${m.tools.map((t, j) => html`<span class="tool" key=${j}>${t}</span>`)}</div>`}
+            ${showDetails && m.sec && html`<div class="meta">${m.sec}s · n8n AI Agent${m.runId ? html` · <a href="#" onClick=${e => { e.preventDefault(); onViewTrace(m.runId); }}>view trace</a>` : ''}</div>`}
           </div>`)}
         ${busy && html`<div class="typing">AlgoFactory is checking…</div>`}
       </div>
@@ -608,7 +608,7 @@ function History({ id, onClose, onChanged }) {
   const [err, setErr] = useState('');
   const load = useCallback(() => getJson(`/floor/history?equipment_id=${encodeURIComponent(id)}&hours=24`).then(setH).catch(e => setErr(e.message)), [id]);
   useEffect(() => { load(); }, [load]);
-  // Mark action taken: new status + what was done + who (name remembered in this browser)
+  // Mark action taken: new status + what was done + who (the name is kept only if browser storage is available; n8n's sandbox blocks it)
   const [newStatus, setNewStatus] = useState('normal');
   const [note, setNote] = useState('');
   const [who, setWho] = useState(() => lsGet('af.performedBy', ''));
@@ -747,7 +747,7 @@ function App() {
       <section class=${'chat-row' + (showActivity ? '' : ' solo')}>
         <div class="chat-col">
           <div class="chat-toggle"><button class="btn" onClick=${toggleActivity} aria-pressed=${showActivity}>${showActivity ? 'Hide activity' : 'Show activity'}</button></div>
-          <${Chat} onActivity=${refresh} onRunStart=${setLiveRun} onViewTrace=${openTrace} />
+          <${Chat} onActivity=${refresh} onRunStart=${setLiveRun} onViewTrace=${openTrace} showDetails=${showActivity} />
         </div>
         ${showActivity && html`<${ActivityPanel} runId=${liveRun} onViewTrace=${openTrace} />`}
       </section>

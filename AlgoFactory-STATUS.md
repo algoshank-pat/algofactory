@@ -133,7 +133,7 @@ Every chat message (dashboard chat or n8n chat page) is recorded as a run. Senso
 - **Dashboard:**
   - **Process trace tab:** pick a run, see a timeline of steps, click a step for its detail.
   - **Activity log tab:** chat runs newest first, filterable by plant and decision; clicking a row opens its trace.
-  - **Activity panel** beside the chat: streams the current message's steps (polls every 500 ms). Show/Hide is remembered per browser.
+  - **Activity panel** beside the chat: streams the current message's steps (polls every 500 ms). Hidden on every page load; "Show activity" reveals it together with the tool calls on each chat reply. Chat replies themselves show only the answer.
 - **Storage:** Postgres tables `runs` (one row per chat message) and `run_trace` (one row per step); `alert_log.run_id` links alerts to runs. SQL is in `build/sql/sql-trace.sql`, `sql-chat-run.sql` and `sql-station1-lookup.sql`.
 - **API:** `GET /webhook/floor/runs?limit=&plant=&decision=` and `GET /webhook/floor/run?id=<run_id>`. The detail endpoint uses a query parameter, because n8n registers webhooks with path parameters under a generated ID prefix.
 - **Verified October 16:** C1 shows +50 +40 -40 -15 -5, cap -> 10, HOLD, 3 LLM calls and 2 tool calls; C3 shows lookup -> 11 motors -> asks which. The full regression still passes 10/10 tests (20/20 runs). The chat path takes about 0.3-0.5 s longer because of the extra trace steps.
@@ -188,6 +188,7 @@ Run it with `docker exec -i algoman-pg psql -U algoman -d algoman`.
    - Delete the two unused Header Auth credentials.
 
 ## Known limits
+- **Dashboard settings are not saved between page loads:** n8n serves the dashboard in a sandbox (`Content-Security-Policy: sandbox` without `allow-same-origin`), so the page cannot use browser storage. The selected tab, Show/Hide activity and the "Your name" field reset on reload. Persisting them would need `N8N_INSECURE_DISABLE_WEBHOOK_IFRAME_SANDBOX=true` on the container (weaker isolation) or serving the page from its own web server.
 - **Status job changes:** changes made by the 15-minute job are not written to alert_log, so a machine's history shows its alerts and resets only.
 - **Plant coordinates:** fixed in the dashboard file, not stored in Postgres.
 - **Map outline:** loads from a CDN (us-atlas via jsDelivr), so it needs internet access.
