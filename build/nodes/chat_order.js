@@ -52,7 +52,31 @@ calls.forEach((c, i) => {
 });
 while (g < groups.length) { out.push(...groups[g]); anchor = Number(groups[g][groups[g].length - 1].created_ms); g++; }
 
-const reply = String(agent.output || '');
+// Final reply, made exact where the data allows (the model tended to reword numbers):
+// - status answers: the SQL summary_text, word for word
+// - machine checks: the header line (label, machine, site/line, confidence) is built from the tool results;
+//   only the model's plain-language sentence is kept
+const allSteps = agent.intermediateSteps || [];
+const parseObs = o => { try { return typeof o === 'string' ? JSON.parse(o) : o; } catch { return null; } };
+const firstRow = o => [].concat(parseObs(o) || [])[0] || null;
+const lastOf = tool => [...allSteps].reverse().find(s => s.action?.tool === tool);
+const statusStep = lastOf('get_equipment_status'), checkStep = lastOf('check_alert');
+let reply = String(agent.output || '');
+if (checkStep) {
+  const r = firstRow(checkStep.observation);
+  if (r && r.action) {
+    const label = { ACT: 'ACT NOW', HOLD: 'HOLD', ESCALATE: 'CHECK' }[r.action] || r.action;
+    const found = allSteps.filter(s => s.action?.tool === 'lookup_equipment')
+      .flatMap(s => [].concat(parseObs(s.observation) || [])).find(x => x && x.equipment_id === r.equipment_id) || null;
+    const where = found ? ` (${found.site}, ${found.line})` : '';
+    const header = `${label} · ${r.equipment_name || r.equipment_id || 'Unknown machine'}${where} · ${r.confidence_score}%`;
+    const body = reply.split(/\r?\n/).map(l => l.trim()).filter(l => l && !/^(ACT NOW|ACT|HOLD|CHECK|ESCALATE|IN MAINTENANCE|OK)\b/.test(l)).join(' ');
+    reply = body ? header + '\n' + body : header;
+  }
+} else if (statusStep) {
+  const r = firstRow(statusStep.observation);
+  if (r && r.summary_text) reply = r.summary_text;
+}
 out.push({ station: 'LLM', step: `LLM call ${calls.length + 1} -> reply to the worker`, ms: Math.max(0, Date.now() - anchor),
            created_at: new Date().toISOString(), detail: { model, reply, ms_estimated: true } });
 
@@ -74,4 +98,4 @@ const summary = {
 };
 
 const steps = out.map(({ station, step, detail, ms, created_at }) => ({ station, step, detail, ms, created_at }));
-return [{ json: { run_id: run.run_id, steps, summary } }];
+return [{ json: { run_id: run.run_id, steps, summary, final_reply: reply } }];

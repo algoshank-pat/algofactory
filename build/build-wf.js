@@ -122,7 +122,7 @@ const chat = wf('AlgoFactory - 4 Chat', [
   { id: uuid(), name: 'Chat Memory', type: '@n8n/n8n-nodes-langchain.memoryBufferWindow', typeVersion: 1.3, position: [160, 260], parameters: { contextWindowLength: 10 } },
   pgTool('lookup_equipment', 'Find machines by name or ID. Input: the machine words exactly as the worker wrote them. Returns 0, 1 or several rows with equipment_id, name, type, site, line, status.',
     'SELECT * FROM lookup_equipment_traced($1, $2);', 'name_or_id', 'Machine name or ID as the worker wrote it, e.g. Pump 2, Equipment-001, motor', 320),
-  pgTool('get_equipment_status', 'Status summary with exact counts. Input: all, a site (Austin, Columbus, Fremont, Denver, Minneapolis, Miami, Seattle), a state, region, line, or a machine. Returns total, by_status counts, and needs_attention (every machine not normal, with reason).',
+  pgTool('get_equipment_status', 'Machine status for managers. Input: all, a site (Austin, Columbus, Fremont, Denver, Minneapolis, Miami, Seattle), a state, region, line, or a machine. Returns summary_text: the finished reply, to be given to the user word for word.',
     'SELECT * FROM get_status_summary_traced($1, $2);', 'scope', 'all, a site, state, region, line, or a machine name or ID', 480),
   { id: uuid(), name: 'check_alert', type: '@n8n/n8n-nodes-langchain.toolWorkflow', typeVersion: 2.2, position: [640, 260],
     parameters: { description: 'Run the AlgoFactory checks (evidence, sensors, schedule, baseline, history) for one identified machine. Call only after lookup_equipment returned exactly one row. Returns action (ACT/HOLD/ESCALATE), confidence_score, explanation and response.',

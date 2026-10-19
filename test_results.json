@@ -1,17 +1,17 @@
 {
   "project": "AlgoFactory",
   "summary": {
-    "run_at": "2026-10-18T23:35:42.028Z",
+    "run_at": "2026-10-19T03:14:30.112Z",
     "tests_passed": 10,
     "tests_total": 10,
     "runs_passed": 20,
     "runs_total": 20,
     "scenario5_pass": true,
     "latency_sec": {
-      "sensor_p50": 1.98,
-      "sensor_max": 70.4,
-      "chat_p50": 2.07,
-      "chat_max": 4.78
+      "sensor_p50": 1.56,
+      "sensor_max": 2.6,
+      "chat_p50": 3,
+      "chat_max": 4.32
     },
     "environment": {
       "plant_clock": "2026-10-19T08:30 (PLANT_CLOCK, Monday after the 06:00-08:00 wet-wash)",
@@ -54,8 +54,8 @@
             "layer3": 0,
             "layer4": 0
           },
-          "reply": "Status: ALERT  \nDiagnosis: Motor Thermal Overload (TH-001) – temperature at max limit, risk of overload  \nAction: Follow MP-TH-001 – acknowledge alert, assess severity, reduce load, inspect bearing and cooling, prepare for possible shutdown  \nParts: Bearing replacement kit (6208) – lead time 2‑3 days; lubricant ISO 32 turbine oil – lead time 1 day\nSources: [1] postgres.equipment (equipment-db-Equipment-001) · [2] anomaly_patterns.md (anomaly_patterns-0) · [3] playbooks.txt (playbooks-8)",
-          "latency_sec": 2.32,
+          "reply": "Status: ALERT  \nDiagnosis: Motor Thermal Overload (TH-001) – temperature at max limit, risk of bearing friction or cooling issue  \nAction: Follow MP-TH-001 – acknowledge alert, assess severity, reduce load, inspect bearing and cooling system, prepare for possible shutdown  \nParts: Bearing replacement kit (6208) – 2‑3 days; lubricant (ISO 32 turbine oil) – 1 day; thermal paste – 1 day\nSources: [1] postgres.equipment (equipment-db-Equipment-001) · [2] anomaly_patterns.md (anomaly_patterns-0) · [3] playbooks.txt (playbooks-8)",
+          "latency_sec": 2.6,
           "pass": true
         },
         {
@@ -76,8 +76,8 @@
             "layer3": 0,
             "layer4": 0
           },
-          "reply": "Status: ALERT  \nDiagnosis: Motor Thermal Overload (TH-001) – temperature at max limit, risk of overload  \nAction: Follow MP-TH-001 – acknowledge alert, assess severity, reduce load, inspect bearing and cooling, prepare for possible shutdown  \nParts: Bearing replacement kit (6208) – lead time 2‑3 days; lubricant ISO 32 turbine oil – lead time 1 day\nSources: [1] postgres.equipment (equipment-db-Equipment-001) · [2] anomaly_patterns.md (anomaly_patterns-0) · [3] playbooks.txt (playbooks-8)",
-          "latency_sec": 2.7,
+          "reply": "Status: ALERT  \nDiagnosis: Motor Thermal Overload (TH-001) – temperature at max limit, risk of bearing friction or cooling issue  \nAction: Follow MP-TH-001 – acknowledge alert, assess severity, reduce load, inspect bearing and cooling system, prepare for possible shutdown  \nParts: Bearing replacement kit (6208) – 2‑3 days; lubricant (ISO 32 turbine oil) – 1 day; thermal paste – 1 day\nSources: [1] postgres.equipment (equipment-db-Equipment-001) · [2] anomaly_patterns.md (anomaly_patterns-0) · [3] playbooks.txt (playbooks-8)",
+          "latency_sec": 2.58,
           "pass": true
         }
       ],
@@ -113,8 +113,8 @@
             "layer3": 0,
             "layer4": 0
           },
-          "reply": "Status: ALERT  \nDiagnosis: Motor thermal overload – probable bearing friction increase or cooling deficiency (TH-001).  \nAction: Follow MP-TH-001 – reduce load, inspect cooling system, feel bearings; if hot/rough, schedule bearing replacement.  \nParts: Bearing kit (6208/6309) – 2‑3 days; ISO 32 lubricant – 1 day; thermal paste – 1 day.\nSources: [1] anomaly_patterns.md (anomaly_patterns-0) · [2] playbooks.txt (playbooks-8) · [3] playbooks.txt (playbooks-9)",
-          "latency_sec": 1.99,
+          "reply": "Status: ALERT  \nDiagnosis: Motor thermal overload likely due to bearing friction or cooling deficiency (TH-001).  \nAction: Follow MP-TH-001 – reduce load, inspect cooling system, feel bearings; if hot/rough, schedule bearing replacement and shut down per emergency steps.  \nParts: Bearing kit (6208/6309) – 2‑3 days, ISO 32 lubricant – 1 day, thermal paste – 1 day.\nSources: [1] anomaly_patterns.md (anomaly_patterns-0) · [2] playbooks.txt (playbooks-8) · [3] playbooks.txt (playbooks-9)",
+          "latency_sec": 2.21,
           "pass": true
         },
         {
@@ -133,8 +133,8 @@
             "layer3": 0,
             "layer4": 0
           },
-          "reply": "Status: ALERT  \nDiagnosis: Motor thermal overload – probable bearing friction increase or cooling deficiency (TH-001).  \nAction: Follow MP-TH-001 – reduce load, inspect cooling system, feel bearings; if hot/rough, schedule bearing replacement.  \nParts: Bearing kit (6208/6309) – 2‑3 days; ISO 32 lubricant – 1 day; thermal paste – 1 day.\nSources: [1] anomaly_patterns.md (anomaly_patterns-0) · [2] playbooks.txt (playbooks-8) · [3] playbooks.txt (playbooks-9)",
-          "latency_sec": 2.93,
+          "reply": "Status: ALERT  \nDiagnosis: Motor thermal overload likely due to bearing friction or cooling deficiency (TH-001).  \nAction: Follow MP-TH-001 – reduce load, inspect cooling system, feel bearings; if hot/rough, schedule bearing replacement and shut down per emergency steps.  \nParts: Bearing kit (6208/6309) – 2‑3 days, ISO 32 lubricant – 1 day, thermal paste – 1 day.\nSources: [1] anomaly_patterns.md (anomaly_patterns-0) · [2] playbooks.txt (playbooks-8) · [3] playbooks.txt (playbooks-9)",
+          "latency_sec": 2.09,
           "pass": true
         }
       ],
@@ -172,8 +172,8 @@
             "layer3": 0,
             "layer4": 0
           },
-          "reply": "Status: ALERT  \nDiagnosis: VB-001 – bearing wear causing vibration at max limit (8 mm/s)  \nAction: Immediate bearing replacement per VB-001 procedure; schedule replacement now (do not wait for Thursday)  \nParts: Replacement bearing Piston‑Ring‑PR‑88 (lead time 2‑3 days), bearing puller tool (on‑site)\nSources: [1] postgres.equipment (equipment-db-Equipment-005) · [2] maintenance_schedule.json (maintenance_schedule-28) · [3] anomaly_patterns.md (anomaly_patterns-3)",
-          "latency_sec": 1.98,
+          "reply": "Status: ALERT  \nDiagnosis: Bearing wear on Equipment-005 causing vibration at 8 mm/s (exceeds max) – matches VB-001 pattern.  \nAction: Follow playbook VB-001 – measure runout, then replace bearing immediately.  \nParts: Replacement bearing (2‑3 days lead), alignment shims, bearing puller tool.\nSources: [1] postgres.equipment (equipment-db-Equipment-005) · [2] maintenance_schedule.json (maintenance_schedule-28) · [3] anomaly_patterns.md (anomaly_patterns-3)",
+          "latency_sec": 2.27,
           "pass": true
         },
         {
@@ -194,8 +194,8 @@
             "layer3": 0,
             "layer4": 0
           },
-          "reply": "Status: ALERT  \nDiagnosis: VB-001 – bearing wear causing vibration at max limit (8 mm/s)  \nAction: Immediate bearing replacement per VB-001 procedure; schedule replacement now (do not wait for Thursday)  \nParts: Replacement bearing Piston‑Ring‑PR‑88 (lead time 2‑3 days), bearing puller tool (on‑site)\nSources: [1] postgres.equipment (equipment-db-Equipment-005) · [2] maintenance_schedule.json (maintenance_schedule-28) · [3] anomaly_patterns.md (anomaly_patterns-3)",
-          "latency_sec": 2.02,
+          "reply": "Status: ALERT  \nDiagnosis: Bearing wear on Equipment-005 causing vibration at 8 mm/s (exceeds max) – matches VB-001 pattern.  \nAction: Follow playbook VB-001 – measure runout, then replace bearing immediately.  \nParts: Replacement bearing (2‑3 days lead), alignment shims, bearing puller tool.\nSources: [1] postgres.equipment (equipment-db-Equipment-005) · [2] maintenance_schedule.json (maintenance_schedule-28) · [3] anomaly_patterns.md (anomaly_patterns-3)",
+          "latency_sec": 2.12,
           "pass": true
         }
       ],
@@ -234,7 +234,7 @@
             "layer4": 0
           },
           "reply": "Status: NEEDS INVESTIGATION\nDiagnosis: 68 below max_temp_c 85. Evidence is not strong enough to confirm a fault (confidence 35%).\nAction: Verify the sensor reading on Equipment-001 and keep monitoring; escalate to a technician if it keeps rising.\nParts: None",
-          "latency_sec": 1.33,
+          "latency_sec": 1.56,
           "pass": true
         },
         {
@@ -256,7 +256,7 @@
             "layer4": 0
           },
           "reply": "Status: NEEDS INVESTIGATION\nDiagnosis: 68 below max_temp_c 85. Evidence is not strong enough to confirm a fault (confidence 35%).\nAction: Verify the sensor reading on Equipment-001 and keep monitoring; escalate to a technician if it keeps rising.\nParts: None",
-          "latency_sec": 1.16,
+          "latency_sec": 1.46,
           "pass": true
         }
       ],
@@ -295,7 +295,7 @@
             "layer4": -5
           },
           "reply": "Status: FALSE POSITIVE\nDiagnosis: humidity 75 on Equipment-001 is explained by context. wet-wash cleaning Monday 06:00 (2h) explains humidity up to 75%. Post-cleaning max expected 75%; reading 75% is normal.\nAction: No action needed. Readings should return to baseline by 10:00.\nParts: None",
-          "latency_sec": 1.03,
+          "latency_sec": 1.14,
           "pass": true
         },
         {
@@ -317,7 +317,7 @@
             "layer4": -5
           },
           "reply": "Status: FALSE POSITIVE\nDiagnosis: humidity 75 on Equipment-001 is explained by context. wet-wash cleaning Monday 06:00 (2h) explains humidity up to 75%. Post-cleaning max expected 75%; reading 75% is normal.\nAction: No action needed. Readings should return to baseline by 10:00.\nParts: None",
-          "latency_sec": 0.88,
+          "latency_sec": 1.26,
           "pass": true
         }
       ],
@@ -355,7 +355,7 @@
             "layer4": 0
           },
           "reply": "Status: NEEDS INVESTIGATION\nDiagnosis: Report is too vague to diagnose: no equipment ID or sensor reading.\nAction: Specify the equipment ID and the sensor reading or symptom observed.\nParts: None",
-          "latency_sec": 1.29,
+          "latency_sec": 1.4,
           "pass": true
         },
         {
@@ -375,7 +375,7 @@
             "layer4": 0
           },
           "reply": "Status: NEEDS INVESTIGATION\nDiagnosis: Report is too vague to diagnose: no equipment ID or sensor reading.\nAction: Specify the equipment ID and the sensor reading or symptom observed.\nParts: None",
-          "latency_sec": 70.4,
+          "latency_sec": 1.05,
           "pass": true
         }
       ],
@@ -412,8 +412,8 @@
           "confidence": 10,
           "decision": "HOLD",
           "pass": true,
-          "reply": "Decision: HOLD (Motor 1)  \nWhy: Humidity 75% is explained by the scheduled wet‑wash cleaning, which can raise humidity to this level.  \nConfidence: 10%  \nNext step: No action needed; monitor that humidity returns to normal after the cleaning finishes.",
-          "latency_sec": 4.78
+          "reply": "HOLD · Motor 1 (Austin Plant, Line 1) · 10%\nHumidity is high because of the wet‑wash cleaning earlier today. No action needed now. Next: keep an eye on it until it drops back to normal.",
+          "latency_sec": 3.5
         },
         {
           "run": 2,
@@ -439,8 +439,8 @@
           "confidence": 10,
           "decision": "HOLD",
           "pass": true,
-          "reply": "Decision: HOLD (Motor 1)  \nWhy: Humidity 75% is explained by the scheduled wet‑wash cleaning, which can raise humidity to this level.  \nConfidence: 10%  \nNext step: No action needed; monitor that humidity returns to normal after the cleaning finishes.",
-          "latency_sec": 2.91
+          "reply": "HOLD · Motor 1 (Austin Plant, Line 1) · 10%\nHumidity is high because of the wet‑wash cleaning earlier today. No action needed now. Next: just keep an eye on it.",
+          "latency_sec": 3
         }
       ],
       "pass": true
@@ -476,8 +476,8 @@
           "confidence": 28,
           "decision": "ESCALATE",
           "pass": true,
-          "reply": "Decision: ESCALATE (Pump 2)  \nWhy: Report is vague with no sensor data, so a fault can’t be confirmed.  \nConfidence: 28%  \nNext step: Check the acoustic sensor on Pump 2 and monitor; if the noise persists or worsens, call a technician.",
-          "latency_sec": 2.94
+          "reply": "CHECK · Pump 2 (Columbus Plant, Line 2) · 28%\nWe heard a weird noise but have no sensor data yet. Look at the pump, listen for the sound and note any changes. Next: check the acoustic sensor or call a tech if it keeps getting louder.",
+          "latency_sec": 3.36
         },
         {
           "run": 2,
@@ -503,8 +503,8 @@
           "confidence": 28,
           "decision": "ESCALATE",
           "pass": true,
-          "reply": "Decision: ESCALATE (Pump 2)  \nWhy: Reported noise without sensor data, evidence is insufficient to diagnose.  \nConfidence: 28%  \nNext step: Check the acoustic sensor on Pump 2 and monitor; if the noise persists or worsens, call a technician.",
-          "latency_sec": 3.25
+          "reply": "CHECK · Pump 2 (Columbus Plant, Line 2) · 28%\nWe heard a weird noise but have no sensor data yet. Next: check the acoustic sensor on Pump 2 and watch for any change.",
+          "latency_sec": 3.71
         }
       ],
       "pass": true
@@ -543,8 +543,8 @@
           "confidence": null,
           "decision": "ASKED",
           "pass": true,
-          "reply": "Did you mean one of these motors?  \n- Motor 1 (Austin Plant, Line 1)  \n- Motor 2 (Austin Plant, Line 1)  \n- Motor 3 (Columbus Plant, Line 2)  \n- Motor 4 (Fremont Plant, Line 4)  \n- Motor 5 (Austin Plant, Line 1)  \n- Motor 6 (Fremont Plant, Line 4)  \n- Motor 7 (Columbus Plant, Line 3)  \n- Motor 8 (Fremont Plant, Line 4)  \n\nPlease specify the exact motor name or ID.",
-          "latency_sec": 2.02
+          "reply": "Which motor? Motor 1 (Austin Plant, Line 1), Motor 2 (Austin Plant, Line 1), Motor 3 (Columbus Plant, Line 2), Motor 4 (Fremont Plant, Line 4), Motor 5 (Austin Plant, Line 1), Motor 6 (Fremont Plant, Line 4), Motor 7 (Columbus Plant, Line 3), Motor 8 (Fremont Plant, Line 4)",
+          "latency_sec": 1.71
         },
         {
           "run": 2,
@@ -573,8 +573,8 @@
           "confidence": null,
           "decision": "ASKED",
           "pass": true,
-          "reply": "Did you mean one of these motors?  \n- Motor 1 (Austin Plant, Line 1)  \n- Motor 2 (Austin Plant, Line 1)  \n- Motor 3 (Columbus Plant, Line 2)  \n- Motor 4 (Fremont Plant, Line 4)  \n- Motor 5 (Austin Plant, Line 1)  \n- Motor 6 (Fremont Plant, Line 4)  \n- Motor 7 (Columbus Plant, Line 3)  \n- Motor 8 (Fremont Plant, Line 4)  \n\nPlease specify the exact motor name or ID.",
-          "latency_sec": 2.07
+          "reply": "Which motor? Motor 1 (Austin Plant, Line 1), Motor 2 (Austin Plant, Line 1), Motor 3 (Columbus Plant, Line 2), Motor 4 (Fremont Plant, Line 4), Motor 5 (Austin Plant, Line 1), Motor 6 (Fremont Plant, Line 4), Motor 7 (Columbus Plant, Line 3), Motor 8 (Fremont Plant, Line 4)",
+          "latency_sec": 1.76
         }
       ],
       "pass": true
@@ -601,8 +601,8 @@
           "confidence": null,
           "decision": "ASKED",
           "pass": true,
-          "reply": "I couldn’t find a machine matching “compressor on Line 9”. Could you give me the exact name or ID of the equipment?",
-          "latency_sec": 1.37
+          "reply": "I couldn’t find that machine. Could you give me its exact name or ID?",
+          "latency_sec": 4.32
         },
         {
           "run": 2,
@@ -619,8 +619,8 @@
           "confidence": null,
           "decision": "ASKED",
           "pass": true,
-          "reply": "I couldn’t find a machine matching “compressor on Line 9”. Could you give me the exact name or ID of the equipment?",
-          "latency_sec": 1.3
+          "reply": "I couldn’t find that machine. Could you give me its exact name or ID?",
+          "latency_sec": 2.51
         }
       ],
       "pass": true

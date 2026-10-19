@@ -92,6 +92,8 @@
   .msg .tools { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
   .msg .tool { font: 11px 'JetBrains Mono', monospace; color: var(--muted); background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 1px 6px; }
   .msg .meta { font-size: 11px; color: var(--muted); margin-top: 4px; }
+  .dline { margin: 3px 0; }
+  .dchip { display: inline-block; font: 800 11px Inter, sans-serif; letter-spacing: .05em; color: #10141a; background: var(--c); border-radius: 5px; padding: 2px 7px; margin-right: 7px; vertical-align: 1px; }
   .typing { align-self: flex-start; color: var(--muted); font-size: 12px; padding: 4px 2px; }
   .suggest { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0 8px; }
   .suggest button { background: var(--bg); border: 1px solid var(--line); color: var(--text); border-radius: 999px; padding: 4px 10px; font-size: 12px; }
@@ -320,12 +322,25 @@ const CHAT_URL = '/webhook/a1f0c4e2-7b3d-4e5f-9a6b-1c2d3e4f5a6b/chat';
 const CHAT_SUGGESTIONS = ['How are my machines doing?', 'Equipment-001 humidity is 75%, should I worry?', 'Weird noise on Pump 2', 'Motor running hot'];
 
 // Minimal, safe formatting for agent replies: **bold** and "- " bullets (text is never injected as HTML)
+// Decision labels the agent puts first on a line, shown as colored chips (red act, blue hold, amber check, purple maintenance, green ok)
+const LABELS = [
+  ['ACT NOW', 'var(--fault)'], ['IN MAINTENANCE', 'var(--maintenance)'], ['ESCALATE', 'var(--watch)'], ['CHECK', 'var(--watch)'],
+  ['HOLD', 'var(--explained)'], ['ACT', 'var(--fault)'], ['OK', 'var(--normal)']
+];
+const LABEL_RE = new RegExp(`^\\s*(${LABELS.map(([l]) => l).join('|')})\\b\\s*[·:\\-–]?\\s*`);
 function FormattedText({ text }) {
-  return html`${text.split('\n').map((line, i) => {
-    const bullet = /^\s*[-*]\s+/.test(line);
-    const parts = line.replace(/^\s*[-*]\s+/, '').split(/\*\*(.+?)\*\*/g)
-      .map((p, j) => j % 2 ? html`<b key=${j}>${p}</b>` : p);
-    return html`<div key=${i}>${bullet ? '• ' : ''}${parts}</div>`;
+  return html`${text.split('\n').filter(l => l.trim()).map((line, i) => {
+    const bullet = /^\s*[-*•]\s+/.test(line);
+    let rest = line.replace(/^\s*[-*•]\s+/, '');
+    const m = rest.match(LABEL_RE);
+    let chip = null;
+    if (m) {
+      const color = LABELS.find(([l]) => l === m[1])[1];
+      chip = html`<span class="dchip" style=${{ '--c': color }}>${m[1]}</span>`;
+      rest = rest.slice(m[0].length);
+    }
+    const parts = rest.split(/\*\*(.+?)\*\*/g).map((p, j) => j % 2 ? html`<b key=${j}>${p}</b>` : p);
+    return html`<div key=${i} class=${chip ? 'dline' : ''}>${bullet && !chip ? '• ' : ''}${chip}${parts}</div>`;
   })}`;
 }
 

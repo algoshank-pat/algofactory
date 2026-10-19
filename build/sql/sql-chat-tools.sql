@@ -82,3 +82,67 @@ LANGUAGE sql STABLE AS $$
          coalesce((SELECT jsonb_agg(jsonb_build_object('name', name, 'equipment_id', equipment_id, 'site', site, 'line', line, 'status', status, 'reason', reason) ORDER BY status, name)
                    FROM s WHERE status <> 'normal'), '[]'::jsonb)
 $$;
+
+-- status_brief(scope): the manager-facing status reply, written in SQL so counts, labels and next steps are exact.
+-- Labels: ACT NOW (fault), CHECK (watch), IN MAINTENANCE, HOLD (explained). The chat agent returns this text verbatim.
+CREATE OR REPLACE FUNCTION status_brief(scope text)
+RETURNS text LANGUAGE sql STABLE AS $$
+WITH s AS (
+  SELECT g.*, e.max_temp_c, e.max_vibration_mm_s, st.last_reading
+  FROM get_equipment_status(scope) g JOIN equipment e USING (equipment_id) JOIN equipment_status st USING (equipment_id)
+),
+cnt AS (
+  SELECT count(*) AS total, count(*) FILTER (WHERE status = 'normal') AS ok, count(*) FILTER (WHERE status = 'fault') AS f,
+         count(*) FILTER (WHERE status = 'watch') AS w, count(*) FILTER (WHERE status = 'maintenance') AS m,
+         count(*) FILTER (WHERE status = 'explained') AS x, count(DISTINCT site) AS sites
+  FROM s
+),
+nm AS (
+  SELECT CASE WHEN lower(coalesce(trim(scope), '')) IN ('', 'all', 'everything', 'my machines', 'machines', 'all machines') THEN 'All plants'
+              WHEN (SELECT sites FROM cnt) = 1 THEN (SELECT min(site) FROM s)
+              ELSE initcap(scope) END AS n
+),
+lines AS (
+  SELECT CASE status WHEN 'fault' THEN 1 WHEN 'watch' THEN 2 WHEN 'maintenance' THEN 3 ELSE 4 END AS ord, name,
+         CASE status WHEN 'fault' THEN 'ACT NOW' WHEN 'watch' THEN 'CHECK' WHEN 'maintenance' THEN 'IN MAINTENANCE' ELSE 'HOLD' END
+         || ' · ' || name || ' (' || CASE WHEN (SELECT sites FROM cnt) > 1 THEN split_part(site, ' ', 1) || ', ' ELSE '' END || line || '): '
+         || CASE status
+              WHEN 'fault' THEN CASE last_reading->>'sensor_type'
+                     WHEN 'temperature' THEN 'temperature ' || (last_reading->>'sensor_value') || '°C, limit ' || max_temp_c || '°C'
+                     WHEN 'vibration' THEN 'vibration ' || (last_reading->>'sensor_value') || ' mm/s, limit ' || max_vibration_mm_s || ' mm/s'
+                     ELSE 'fault confirmed' END || '. Next: follow the repair plan.'
+              WHEN 'watch' THEN 'reported "' || coalesce(last_reading->>'query', 'an issue') || '", not confirmed by sensors. Next: have a technician take a look.'
+              WHEN 'maintenance' THEN coalesce(nullif(reason, ''), 'in maintenance') || '.'
+              ELSE 'high reading explained by scheduled work. No action needed.'
+            END AS txt
+  FROM s WHERE status <> 'normal'
+)
+SELECT CASE
+  WHEN (SELECT total FROM cnt) = 0 THEN 'No machines found for "' || coalesce(scope, '') || '".'
+  WHEN (SELECT total FROM cnt) = 1 AND (SELECT ok FROM cnt) = 1 THEN 'OK · ' || (SELECT name || ' (' || split_part(site, ' ', 1) || ', ' || line || ')' FROM s) || ': running normally.'
+  WHEN (SELECT total FROM cnt) = 1 THEN (SELECT txt FROM lines)
+  WHEN (SELECT total - ok FROM cnt) = 0 THEN (SELECT n FROM nm) || ': all ' || (SELECT total FROM cnt) || ' machines OK.'
+  ELSE (SELECT n FROM nm) || ': ' || (SELECT ok FROM cnt) || ' OK'
+       || (SELECT concat(CASE WHEN f > 0 THEN ', ' || f || CASE WHEN f = 1 THEN ' needs' ELSE ' need' END || ' action' END,
+                         CASE WHEN w > 0 THEN ', ' || w || ' to check' END,
+                         CASE WHEN m > 0 THEN ', ' || m || ' in maintenance' END,
+                         CASE WHEN x > 0 THEN ', ' || x || ' on hold' END) FROM cnt)
+       || '.' || E'\n' || (SELECT string_agg(txt, E'\n' ORDER BY ord, name) FROM lines)
+END
+$$;
+
+-- Traced status tool: now returns summary_text (the reply to give) first
+DROP FUNCTION IF EXISTS get_status_summary_traced(text, text);
+CREATE FUNCTION get_status_summary_traced(rid TEXT, scope TEXT)
+RETURNS TABLE (summary_text text, total int, by_status jsonb, needs_attention jsonb)
+LANGUAGE plpgsql VOLATILE AS $$
+DECLARE t0 TIMESTAMPTZ := clock_timestamp(); r RECORD; brief TEXT := status_brief(scope);
+BEGIN
+  SELECT * INTO r FROM get_status_summary(scope);
+  PERFORM trace_add_steps(as_uuid(rid), jsonb_build_array(jsonb_build_object(
+    'station', 'Tool', 'step', 'get_equipment_status("' || coalesce(scope, 'all') || '") -> ' || r.total || ' machines',
+    'detail', jsonb_build_object('tool', 'get_equipment_status', 'args', jsonb_build_object('scope', scope), 'total', r.total,
+                                 'by_status', r.by_status, 'needs_attention', r.needs_attention, 'summary_text', brief),
+    'ms', round(extract(epoch FROM clock_timestamp() - t0) * 1000))));
+  RETURN QUERY SELECT brief, r.total, r.by_status, r.needs_attention;
+END $$;
