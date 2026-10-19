@@ -340,7 +340,7 @@ function FormattedText({ text }) {
       rest = rest.slice(m[0].length);
     }
     const parts = rest.split(/\*\*(.+?)\*\*/g).map((p, j) => j % 2 ? html`<b key=${j}>${p}</b>` : p);
-    return html`<div key=${i} class=${chip ? 'dline' : ''}>${bullet && !chip ? '• ' : ''}${chip}${parts}</div>`;
+    return html`<div key=${i} class=${chip ? 'dline' : ''}>${bullet && !chip ? '• ' : ''}${chip}${chip ? ' ' : ''}${parts}</div>`;
   })}`;
 }
 

@@ -1,13 +1,14 @@
 -- 18a: log every alert; update the machine's status when it was identified.
--- ACT -> fault, HOLD -> explained, ESCALATE -> watch. A later reading always replaces the status (that is how faults clear).
+-- ACT -> fault, HOLD -> explained, ESCALATE -> watch. A later reading replaces the status (that is how faults clear);
+-- a report without a reading cannot downgrade a fault or maintenance.
 -- For chat runs (run_id set) it also writes the Station 4 and Write-back trace steps.
 WITH p AS (SELECT $1::jsonb AS j, round(extract(epoch FROM clock_timestamp()) * 1000)::bigint AS now_ms),
 r AS (SELECT as_uuid(j->>'run_id') AS rid FROM p),
 eq AS (SELECT e.equipment_id FROM equipment e, p WHERE e.equipment_id = p.j->>'equipment_id'),
 old AS (SELECT s.status FROM equipment_status s WHERE s.equipment_id = (SELECT equipment_id FROM eq)),
 log AS (
-  INSERT INTO alert_log (equipment_id, input_source, summary, decision, confidence, reason, run_id)
-  SELECT (SELECT equipment_id FROM eq), j->>'source', j->>'query', j->>'action', (j->>'confidence_score')::int, j->>'explanation', (SELECT rid FROM r) FROM p
+  INSERT INTO alert_log (equipment_id, input_source, summary, decision, confidence, reason, run_id, response)
+  SELECT (SELECT equipment_id FROM eq), j->>'source', j->>'query', j->>'action', (j->>'confidence_score')::int, j->>'explanation', (SELECT rid FROM r), j->>'response' FROM p
   RETURNING id
 ),
 up AS (
@@ -21,6 +22,8 @@ up AS (
   FROM p, eq
   ON CONFLICT (equipment_id) DO UPDATE
     SET status = EXCLUDED.status, reason = EXCLUDED.reason, last_reading = EXCLUDED.last_reading, updated_at = EXCLUDED.updated_at
+    -- A report with no sensor reading (e.g. a chat question) never downgrades a fault or a maintenance status
+    WHERE NOT (equipment_status.status IN ('fault', 'maintenance') AND EXCLUDED.last_reading->>'sensor_value' IS NULL AND EXCLUDED.status <> 'fault')
   RETURNING equipment_id, status
 ),
 t AS (
@@ -33,10 +36,10 @@ t AS (
       'ms', p.now_ms - (p.j->>'t14_end')::bigint),
     jsonb_build_object('station', 'Write-back',
       'step', CASE WHEN (SELECT equipment_id FROM eq) IS NULL THEN 'Alert logged (no machine identified)'
-                   ELSE (SELECT equipment_id FROM eq) || ': ' || coalesce((SELECT status FROM old), 'none') || ' -> ' || (SELECT status FROM up) END,
+                   ELSE (SELECT equipment_id FROM eq) || ': ' || coalesce((SELECT status FROM old), 'none') || ' -> ' || coalesce((SELECT status FROM up), coalesce((SELECT status FROM old), 'none') || ' (kept: report had no sensor reading)') END,
       'detail', jsonb_build_object('equipment_id', (SELECT equipment_id FROM eq), 'old_status', (SELECT status FROM old),
-                                   'new_status', (SELECT status FROM up), 'alert_log_id', (SELECT id FROM log)),
+                                   'new_status', coalesce((SELECT status FROM up), (SELECT status FROM old)), 'status_kept', (SELECT status FROM up) IS NULL AND (SELECT equipment_id FROM eq) IS NOT NULL, 'alert_log_id', (SELECT id FROM log)),
       'ms', round(extract(epoch FROM clock_timestamp()) * 1000)::bigint - p.now_ms)
   )) AS traced FROM p
 )
-SELECT (SELECT equipment_id FROM up) AS equipment_id, (SELECT status FROM up) AS status, (SELECT id FROM log) AS alert_id, (SELECT traced FROM t) AS traced;
+SELECT coalesce((SELECT equipment_id FROM up), (SELECT equipment_id FROM eq)) AS equipment_id, coalesce((SELECT status FROM up), (SELECT status FROM old)) AS status, (SELECT id FROM log) AS alert_id, (SELECT traced FROM t) AS traced;

@@ -72,7 +72,7 @@ Worker chat    -> AI Agent calls       -> bge rerank (top 3)      schedule, base
 | Keyword search | In-memory BM25 over `/data/chunks.json` | No sparse index needed for 31 chunks |
 
 ### Confidence scoring (Node 14, Station 3)
-- **Layer 0, evidence (0 to 50):** top rerank score x 50. Added because the original 4 layers maxed out at 30, so "act" (>= 60) was unreachable.
+- **Layer 0, evidence (0 to 50):** best rerank score among anomaly patterns and playbooks x 50. Added because the original 4 layers maxed out at 30, so "act" (>= 60) was unreachable. The machine's own spec row and schedule/baseline chunks do not count (counting them pinned every ACT with an ID at 94%).
 - **Layer 1, sensors (0 to 40):** reading vs. the machine's limit from Postgres (temperature, vibration, humidity baseline).
 - **Layer 2, schedule (-40 to +5):** an active cleaning or maintenance window that explains the reading.
 - **Layer 3, baseline (-25 to 0):** within the expected range for current conditions (for example, post-cleaning humidity).
@@ -110,13 +110,13 @@ Worker chat    -> AI Agent calls       -> bge rerank (top 3)      schedule, base
 
 | Test | Input | Result |
 |---|---|---|
-| S1 | Equipment-001 TH-001 temp 85°C | ACT 94% |
+| S1 | Equipment-001 TH-001 temp 85°C | ACT 84% |
 | S2 | Motor running hot | ACT 75% |
-| S3 | Equipment-005 VB-001 vibration 8 mm/s | ACT 94% |
-| S4 | Equipment-001 TH-002 temp 68°C | ESCALATE 35% |
-| **S5** | **Equipment-001 humidity 75% (Mon 08:30, after the 06:00-08:00 wet-wash)** | **HOLD 10%: false positive caught** |
+| S3 | Equipment-005 VB-001 vibration 8 mm/s | ACT 81% |
+| S4 | Equipment-001 TH-002 temp 68°C | ESCALATE 19% |
+| **S5** | **Equipment-001 humidity 75% (Mon 08:30, after the 06:00-08:00 wet-wash)** | **HOLD 0%: false positive caught** |
 | S6 | Weird noise from the floor | ESCALATE 22% + asks for detail |
-| C1 | "Equipment-001 humidity is 75%, should I worry?" | lookup_equipment(Equipment-001) -> check_alert -> HOLD 10% |
+| C1 | "Equipment-001 humidity is 75%, should I worry?" | lookup_equipment(Equipment-001) -> check_alert -> HOLD 0% |
 | C2 | "Weird noise on Pump 2" | lookup_equipment(Pump 2) -> Equipment-008 -> check_alert -> ESCALATE 28% |
 | C3 | "Motor running hot" | lookup_equipment(Motor) -> 11 motors -> asks which one |
 | C4 | "Is the compressor on Line 9 ok?" | lookup -> no match -> asks; names no machine |
@@ -136,7 +136,8 @@ Every chat message (dashboard chat or n8n chat page) is recorded as a run. Senso
   - **Activity panel** beside the chat: streams the current message's steps (polls every 500 ms). Hidden on every page load; "Show activity" reveals it together with the tool calls on each chat reply. Chat replies themselves show only the answer.
 - **Storage:** Postgres tables `runs` (one row per chat message) and `run_trace` (one row per step); `alert_log.run_id` links alerts to runs. SQL is in `build/sql/sql-trace.sql`, `sql-chat-run.sql` and `sql-station1-lookup.sql`.
 - **API:** `GET /webhook/floor/runs?limit=&plant=&decision=` and `GET /webhook/floor/run?id=<run_id>`. The detail endpoint uses a query parameter, because n8n registers webhooks with path parameters under a generated ID prefix.
-- **Verified October 16:** C1 shows +50 +40 -40 -15 -5, cap -> 10, HOLD, 3 LLM calls and 2 tool calls; C3 shows lookup -> 11 motors -> asks which. The full regression still passes 10/10 tests (20/20 runs). The chat path takes about 0.3-0.5 s longer because of the extra trace steps.
+- **Verified October 16** (before the Layer 0 change of October 18): C1 showed +50 +40 -40 -15 -5, cap -> 10, HOLD, 3 LLM calls and 2 tool calls; C3 shows lookup -> 11 motors -> asks which. The full regression still passes 10/10 tests (20/20 runs). The chat path takes about 0.3-0.5 s longer because of the extra trace steps.
+- **Chat questions vs. reports (October 18):** asking about a machine ("what's the issue with Motor 1", "repair plan for motor 1") reads its current status and, for a fault, the stored action plan (`alert_log.response`). Only a new observation runs `check_alert`. A report without a sensor reading cannot downgrade a fault or maintenance status.
 
 ## Demo setup and script (5 minutes)
 

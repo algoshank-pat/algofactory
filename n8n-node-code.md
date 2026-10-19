@@ -17,12 +17,14 @@
 | Node 9: query rewriting (`search_query`) | "Motor running hot" retrieved equipment rows instead of TH-001. |
 | Node 12: keeps one equipment spec row | 20 near-identical rows crowded patterns and playbooks out of the top 10. |
 | Node 14: declares `sensor_type` | Was undefined; Scenario 5 crashed with a ReferenceError. |
-| Node 14: Layer 0 retrieval relevance (0-50) | Max score was 30, so "generate" (>= 60) was unreachable; Scenarios 1-3 could never pass. |
+| Node 14: Layer 0 evidence (0-50), from anomaly patterns and playbooks only | Max score was 30, so "generate" (>= 60) was unreachable; Scenarios 1-3 could never pass. |
 | Node 14: Layer 1 per sensor type | Humidity and vibration were compared against Max Temp. |
 | Node 14: Layer 2 checks `day_of_week` | A Monday cleaning matched every day. |
 | Node 14: benign cap (10) when a schedule explains the reading | A confirmed scheduled cause overrides; puts Scenario 5 in its 0-10 range. |
 | Node 14: Layer 4 = weekly recurring explanation | No incident history exists; the weekly schedule is the recurrence evidence. |
 | Node 17: reads scores from Node 14 | Node 16 output only has the LLM text. |
+| Node 14b + 15b: escalations use a template, no LLM | Node 14 already decides them; saves ~1 s and cannot hallucinate. |
+| Node 15: max_tokens 200 | ALERT answers stop at ~150 tokens; the cap guards against runaway output. |
 | Node 14b + 15b: escalations use a template, no LLM | Node 14 already decides them; saves ~1 s and cannot hallucinate. |
 | Node 15: max_tokens 200 | ALERT answers stop at ~150 tokens; the cap guards against runaway output. |
 | Node 14b + 15b: escalations use a template, no LLM | Node 14 already decides them; saves ~1 s and cannot hallucinate. |

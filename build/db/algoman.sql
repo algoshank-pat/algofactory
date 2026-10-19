@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict VNlgzqVzKRTLRQhTbJL5BiFrPXHxGQUfbctqcuNxdZAT2aIB8ICw3pqNrDgyNtP
+\restrict fzutKEczRxJ2FxWeHYZ2fhpebMxBH49Yo22rPNBi9RBes5DWnnuBIOt65YQFFAh
 
 -- Dumped from database version 16.14
 -- Dumped by pg_dump version 16.14
@@ -278,7 +278,12 @@ lines AS (
 SELECT CASE
   WHEN (SELECT total FROM cnt) = 0 THEN 'No machines found for "' || coalesce(scope, '') || '".'
   WHEN (SELECT total FROM cnt) = 1 AND (SELECT ok FROM cnt) = 1 THEN 'OK · ' || (SELECT name || ' (' || split_part(site, ' ', 1) || ', ' || line || ')' FROM s) || ': running normally.'
-  WHEN (SELECT total FROM cnt) = 1 THEN (SELECT txt FROM lines)
+  WHEN (SELECT total FROM cnt) = 1 THEN (SELECT txt FROM lines) || coalesce((
+    SELECT E'\nRepair plan: ' || coalesce(substring(a.response from 'Action:\s*([^\n]+)'), 'see the last alert')
+           || coalesce(E'\nParts: ' || substring(a.response from 'Parts:\s*([^\n]+)'), '')
+    FROM alert_log a JOIN s ON a.equipment_id = s.equipment_id
+    WHERE s.status = 'fault' AND a.decision = 'ACT' AND a.response IS NOT NULL
+    ORDER BY a.created_at DESC LIMIT 1), '')
   WHEN (SELECT total - ok FROM cnt) = 0 THEN (SELECT n FROM nm) || ': all ' || (SELECT total FROM cnt) || ' machines OK.'
   ELSE (SELECT n FROM nm) || ': ' || (SELECT ok FROM cnt) || ' OK'
        || (SELECT concat(CASE WHEN f > 0 THEN ', ' || f || CASE WHEN f = 1 THEN ' needs' ELSE ' need' END || ' action' END,
@@ -330,7 +335,8 @@ CREATE TABLE public.alert_log (
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     run_id uuid,
     action_note text,
-    performed_by text
+    performed_by text,
+    response text
 );
 
 
@@ -440,7 +446,7 @@ ALTER TABLE ONLY public.alert_log ALTER COLUMN id SET DEFAULT nextval('public.al
 -- Data for Name: alert_log; Type: TABLE DATA; Schema: public; Owner: -
 --
 
-COPY public.alert_log (id, equipment_id, input_source, summary, decision, confidence, reason, created_at, run_id, action_note, performed_by) FROM stdin;
+COPY public.alert_log (id, equipment_id, input_source, summary, decision, confidence, reason, created_at, run_id, action_note, performed_by, response) FROM stdin;
 \.
 
 
@@ -487,36 +493,36 @@ Equipment-027	Compressor 6	compressor	Plant-F	Floor-2-North	110	8.0	Piston-Ring-
 --
 
 COPY public.equipment_status (equipment_id, status, reason, last_reading, updated_at) FROM stdin;
-Equipment-005	normal	Initial state	\N	2026-10-19 03:28:03.124477+00
-Equipment-001	normal	Initial state	\N	2026-10-19 03:28:03.124477+00
-Equipment-002	normal	Initial state	\N	2026-10-19 03:28:03.124477+00
-Equipment-029	normal	Initial state	\N	2026-10-19 03:28:03.124477+00
-Equipment-013	normal	Initial state	\N	2026-10-19 03:28:03.124477+00
-Equipment-003	normal	Initial state	\N	2026-10-19 03:28:03.124477+00
-Equipment-006	normal	Initial state	\N	2026-10-19 03:28:03.124477+00
-Equipment-007	normal	Initial state	\N	2026-10-19 03:28:03.124477+00
-Equipment-009	normal	Initial state	\N	2026-10-19 03:28:03.124477+00
-Equipment-010	normal	Initial state	\N	2026-10-19 03:28:03.124477+00
-Equipment-011	normal	Initial state	\N	2026-10-19 03:28:03.124477+00
-Equipment-012	normal	Initial state	\N	2026-10-19 03:28:03.124477+00
-Equipment-014	normal	Initial state	\N	2026-10-19 03:28:03.124477+00
-Equipment-015	normal	Initial state	\N	2026-10-19 03:28:03.124477+00
-Equipment-016	normal	Initial state	\N	2026-10-19 03:28:03.124477+00
-Equipment-017	normal	Initial state	\N	2026-10-19 03:28:03.124477+00
-Equipment-018	normal	Initial state	\N	2026-10-19 03:28:03.124477+00
-Equipment-019	normal	Initial state	\N	2026-10-19 03:28:03.124477+00
-Equipment-020	normal	Initial state	\N	2026-10-19 03:28:03.124477+00
-Equipment-004	normal	Initial state	\N	2026-10-19 03:28:03.124477+00
-Equipment-021	normal	Initial state	\N	2026-10-19 03:28:03.124477+00
-Equipment-022	normal	Initial state	\N	2026-10-19 03:28:03.124477+00
-Equipment-023	normal	Initial state	\N	2026-10-19 03:28:03.124477+00
-Equipment-024	normal	Initial state	\N	2026-10-19 03:28:03.124477+00
-Equipment-025	normal	Initial state	\N	2026-10-19 03:28:03.124477+00
-Equipment-026	normal	Initial state	\N	2026-10-19 03:28:03.124477+00
-Equipment-027	normal	Initial state	\N	2026-10-19 03:28:03.124477+00
-Equipment-028	normal	Initial state	\N	2026-10-19 03:28:03.124477+00
-Equipment-030	normal	Initial state	\N	2026-10-19 03:28:03.124477+00
-Equipment-008	normal	Initial state	\N	2026-10-19 03:28:03.124477+00
+Equipment-002	normal	Initial state	\N	2026-10-19 04:46:11.079716+00
+Equipment-029	normal	Initial state	\N	2026-10-19 04:46:11.079716+00
+Equipment-003	normal	Initial state	\N	2026-10-19 04:46:11.079716+00
+Equipment-006	normal	Initial state	\N	2026-10-19 04:46:11.079716+00
+Equipment-007	normal	Initial state	\N	2026-10-19 04:46:11.079716+00
+Equipment-009	normal	Initial state	\N	2026-10-19 04:46:11.079716+00
+Equipment-010	normal	Initial state	\N	2026-10-19 04:46:11.079716+00
+Equipment-011	normal	Initial state	\N	2026-10-19 04:46:11.079716+00
+Equipment-012	normal	Initial state	\N	2026-10-19 04:46:11.079716+00
+Equipment-014	normal	Initial state	\N	2026-10-19 04:46:11.079716+00
+Equipment-015	normal	Initial state	\N	2026-10-19 04:46:11.079716+00
+Equipment-016	normal	Initial state	\N	2026-10-19 04:46:11.079716+00
+Equipment-013	normal	Initial state	\N	2026-10-19 04:46:11.079716+00
+Equipment-005	normal	Initial state	\N	2026-10-19 04:46:11.079716+00
+Equipment-001	normal	Initial state	\N	2026-10-19 04:46:11.079716+00
+Equipment-017	normal	Initial state	\N	2026-10-19 04:46:11.079716+00
+Equipment-018	normal	Initial state	\N	2026-10-19 04:46:11.079716+00
+Equipment-019	normal	Initial state	\N	2026-10-19 04:46:11.079716+00
+Equipment-020	normal	Initial state	\N	2026-10-19 04:46:11.079716+00
+Equipment-004	normal	Initial state	\N	2026-10-19 04:46:11.079716+00
+Equipment-021	normal	Initial state	\N	2026-10-19 04:46:11.079716+00
+Equipment-022	normal	Initial state	\N	2026-10-19 04:46:11.079716+00
+Equipment-023	normal	Initial state	\N	2026-10-19 04:46:11.079716+00
+Equipment-024	normal	Initial state	\N	2026-10-19 04:46:11.079716+00
+Equipment-025	normal	Initial state	\N	2026-10-19 04:46:11.079716+00
+Equipment-026	normal	Initial state	\N	2026-10-19 04:46:11.079716+00
+Equipment-027	normal	Initial state	\N	2026-10-19 04:46:11.079716+00
+Equipment-028	normal	Initial state	\N	2026-10-19 04:46:11.079716+00
+Equipment-030	normal	Initial state	\N	2026-10-19 04:46:11.079716+00
+Equipment-008	normal	Initial state	\N	2026-10-19 04:46:11.079716+00
 \.
 
 
@@ -540,7 +546,7 @@ COPY public.runs (run_id, source, input, status, equipment_id, decision, confide
 -- Name: alert_log_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
 
-SELECT pg_catalog.setval('public.alert_log_id_seq', 246, true);
+SELECT pg_catalog.setval('public.alert_log_id_seq', 281, true);
 
 
 --
@@ -648,5 +654,5 @@ ALTER TABLE ONLY public.runs
 -- PostgreSQL database dump complete
 --
 
-\unrestrict VNlgzqVzKRTLRQhTbJL5BiFrPXHxGQUfbctqcuNxdZAT2aIB8ICw3pqNrDgyNtP
+\unrestrict fzutKEczRxJ2FxWeHYZ2fhpebMxBH49Yo22rPNBi9RBes5DWnnuBIOt65YQFFAh
 

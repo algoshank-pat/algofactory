@@ -67,9 +67,13 @@ const reasons = {};
 
 // ===== LAYER 0: Retrieval relevance (0 to 50) =====
 // How well the knowledge base supports a diagnosis for this query
+// Only fault knowledge counts as evidence: anomaly patterns and playbooks. The machine's own spec row
+// (Postgres) and schedule/baseline chunks always rank high for an ID and would pin every alert at ~49.
 function layer0() {
-  const top = topChunks.length ? topChunks[0].rerank_score : 0;
-  reasons.layer0 = `Top rerank score ${top.toFixed(2)}`;
+  const evidence = topChunks.filter(c => ['anomaly_pattern', 'procedure'].includes(c.metadata?.chunk_type));
+  const best = evidence.reduce((b, c) => (!b || c.rerank_score > b.rerank_score ? c : b), null);
+  const top = best ? best.rerank_score : 0;
+  reasons.layer0 = best ? `Best fault evidence ${best.id} (${best.metadata?.source_doc}) rerank ${top.toFixed(2)}` : 'No anomaly pattern or playbook in the top results';
   return Math.round(top * W.RETRIEVAL_MAX);
 }
 

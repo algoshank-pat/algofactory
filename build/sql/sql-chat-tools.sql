@@ -122,7 +122,12 @@ lines AS (
 SELECT CASE
   WHEN (SELECT total FROM cnt) = 0 THEN 'No machines found for "' || coalesce(scope, '') || '".'
   WHEN (SELECT total FROM cnt) = 1 AND (SELECT ok FROM cnt) = 1 THEN 'OK · ' || (SELECT name || ' (' || split_part(site, ' ', 1) || ', ' || line || ')' FROM s) || ': running normally.'
-  WHEN (SELECT total FROM cnt) = 1 THEN (SELECT txt FROM lines)
+  WHEN (SELECT total FROM cnt) = 1 THEN (SELECT txt FROM lines) || coalesce((
+    SELECT E'\nRepair plan: ' || coalesce(substring(a.response from 'Action:\s*([^\n]+)'), 'see the last alert')
+           || coalesce(E'\nParts: ' || substring(a.response from 'Parts:\s*([^\n]+)'), '')
+    FROM alert_log a JOIN s ON a.equipment_id = s.equipment_id
+    WHERE s.status = 'fault' AND a.decision = 'ACT' AND a.response IS NOT NULL
+    ORDER BY a.created_at DESC LIMIT 1), '')
   WHEN (SELECT total - ok FROM cnt) = 0 THEN (SELECT n FROM nm) || ': all ' || (SELECT total FROM cnt) || ' machines OK.'
   ELSE (SELECT n FROM nm) || ': ' || (SELECT ok FROM cnt) || ' OK'
        || (SELECT concat(CASE WHEN f > 0 THEN ', ' || f || CASE WHEN f = 1 THEN ' needs' ELSE ' need' END || ' action' END,
